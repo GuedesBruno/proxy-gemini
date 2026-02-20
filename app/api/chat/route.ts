@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
         // Inicialize o modelo gemini-2.0-flash e passe o pre_prompt como systemInstruction
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash-lite',
             systemInstruction: prePrompt || undefined,
         });
 
