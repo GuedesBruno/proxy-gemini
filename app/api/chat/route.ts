@@ -7,7 +7,14 @@ import admin from 'firebase-admin';
 interface ChatRequestBody {
     userId: string;
     appId: string;
-    message: string;
+    history: {
+        role: 'user' | 'model';
+        parts: any[];
+    }[];
+    image?: {
+        base64: string;
+        mimeType: string;
+    };
 }
 
 // Inicialize o modelo usando a variável de ambiente (garante que existe valor válido)
@@ -15,14 +22,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: Request) {
     try {
-        // Extraia userId, appId e message do corpo da requisição JSON
+        // Extraia userId, appId, history e opcionalmente a imagem do corpo da requisição JSON
         const body: Partial<ChatRequestBody> = await req.json();
-        const { userId, appId, message } = body;
+        const { userId, appId, history, image } = body;
 
         // Verificação de segurança de tipos
-        if (!userId || !appId || !message) {
+        if (!userId || !appId || !history || !Array.isArray(history) || history.length === 0) {
             return NextResponse.json(
-                { error: 'Parâmetros obrigatórios ausentes: userId, appId, ou message.' },
+                { error: 'Parâmetros obrigatórios ausentes ou inválidos: userId, appId, ou array de history.' },
                 { status: 400 }
             );
         }
@@ -39,6 +46,7 @@ export async function POST(req: Request) {
         // Tipando os dados recebidos do Firestore
         const appData = appDoc.data();
         const prePrompt: string = appData?.pre_prompt || '';
+        const modelName: string = appData?.model_name || 'gemini-2.5-flash-lite';
 
         // Busque o documento correspondente ao userId na collection users para pegar o token_balance
         const userRef = db.collection('users').doc(userId);
@@ -59,14 +67,33 @@ export async function POST(req: Request) {
             );
         }
 
-        // Inicialize o modelo gemini-2.0-flash e passe o pre_prompt como systemInstruction
+        // Inicialize o modelo dinamicamente e passe o pre_prompt como systemInstruction
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash-lite',
+            model: modelName,
             systemInstruction: prePrompt || undefined,
         });
 
-        // Chame o método generateContent(message)
-        const result = await model.generateContent(message);
+        // Prepara os parâmetros para enviar o histórico inteiro
+        let generateParams: any = { contents: history };
+
+        // Se existir uma imagem, injeta no array de parts da última mensagem (do usuário)
+        if (image && image.base64 && image.mimeType) {
+            const imagePart = {
+                inlineData: {
+                    data: image.base64,
+                    mimeType: image.mimeType
+                }
+            };
+
+            const lastMessage = history[history.length - 1];
+            if (lastMessage && Array.isArray(lastMessage.parts)) {
+                // Adiciona a imagem no array de partes da última mensagem enviada pelo usuário
+                lastMessage.parts.push(imagePart);
+            }
+        }
+
+        // Chame o método generateContent
+        const result = await model.generateContent(generateParams);
         const response = await result.response;
 
         // Extraia o texto da resposta e o total de tokens gastos
@@ -78,6 +105,15 @@ export async function POST(req: Request) {
         await userRef.update({
             token_balance: admin.firestore.FieldValue.increment(-tokenCount),
             total_spent_tokens: admin.firestore.FieldValue.increment(tokenCount)
+        });
+
+        // Adiciona um novo documento na collection usage_logs
+        await db.collection('usage_logs').add({
+            userId,
+            appId,
+            model_name: modelName,
+            tokens_used: tokenCount,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
         const updatedBalance: number = Math.max(0, currentTokenBalance - tokenCount);

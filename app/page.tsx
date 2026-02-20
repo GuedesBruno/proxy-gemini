@@ -5,13 +5,29 @@ import { useState } from 'react';
 export default function Home() {
   const [appId, setAppId] = useState('liber_chat');
   const [message, setMessage] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<{ role: string; parts: { text: string }[] }[]>([]);
   const [responseData, setResponseData] = useState<{
-    message: string;
     tokens_consumed: number;
     updated_balance: number;
   } | null>(null);
+
+  // Helper function to read file as Base64 string
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        let base64String = reader.result as string;
+        // Remove the data:*/*;base64, prefix
+        base64String = base64String.split(';base64,').pop() || '';
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +38,21 @@ export default function Home() {
     setResponseData(null);
 
     try {
+      let imagePayload = undefined;
+
+      if (imageFile) {
+        const base64Data = await fileToBase64(imageFile);
+        imagePayload = {
+          base64: base64Data,
+          mimeType: imageFile.type,
+        };
+      }
+
+      // 1. Atualiza visualmente o historico imediatamente com a mensagem enviada
+      const newUserMsg = { role: 'user', parts: [{ text: message }] };
+      const updatedHistory = [...chatHistory, newUserMsg];
+      setChatHistory(updatedHistory);
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -30,7 +61,8 @@ export default function Home() {
         body: JSON.stringify({
           userId: 'user_teste_123',
           appId,
-          message,
+          history: updatedHistory,
+          image: imagePayload
         }),
       });
 
@@ -41,6 +73,20 @@ export default function Home() {
       }
 
       setResponseData(data);
+
+      // 2. Adiciona a resposta da IA no histórico
+      setChatHistory((prev) => [
+        ...prev,
+        { role: 'model', parts: [{ text: data.message }] }
+      ]);
+
+      // Limpar os campos apos o sucesso
+      setMessage('');
+      setImageFile(null);
+      // Reseta o input de arquivo manipulando o DOM
+      const fileInput = document.getElementById('imageUpload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -96,6 +142,53 @@ export default function Home() {
               />
             </div>
 
+            {/* Input - File / Image Upload */}
+            <div>
+              <label htmlFor="imageUpload" className="block text-sm font-semibold text-gray-700 mb-2">
+                Anexar Imagem (Opcional, aceita JPEG, PNG, WEBP)
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="space-y-1 text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <div className="flex text-sm text-gray-600 justify-center">
+                    <label
+                      htmlFor="imageUpload"
+                      className="relative cursor-pointer bg-transparent rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                    >
+                      <span>Faça o upload de um arquivo</span>
+                      <input
+                        id="imageUpload"
+                        name="imageUpload"
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          setImageFile(file || null);
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {imageFile ? `Arquivo selecionado: ${imageFile.name}` : 'PNG, JPG, WEBP até 4MB'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Error Message */}
             {error && (
               <div className="rounded-lg bg-red-50 p-4 border border-red-200 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -144,14 +237,14 @@ export default function Home() {
         {responseData && (
           <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-8 sm:px-10 flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500 fade-in">
             {/* Stats Row */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               {/* Tokens Utilizados */}
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm transition-transform hover:-translate-y-1 duration-300">
                 <div className="flex items-center space-x-2 mb-2">
                   <svg className="h-5 w-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  <span className="text-xs font-bold tracking-wider text-gray-500 uppercase">Custo / Tokens</span>
+                  <span className="text-xs font-bold tracking-wider text-gray-500 uppercase">Custo Última Req</span>
                 </div>
                 <p className="mt-1 text-3xl font-extrabold text-gray-900">{responseData.tokens_consumed}</p>
               </div>
@@ -168,23 +261,40 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Gemini Response Block */}
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-              <div className="flex items-center mb-4 space-x-2 border-b border-gray-100 pb-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100">
-                  <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
-                </span>
-                <h3 className="text-sm font-bold tracking-wider text-gray-800 uppercase">Resposta do Gemini</h3>
-              </div>
+            {/* Gemini Response History */}
+            {chatHistory.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm relative overflow-hidden flex flex-col h-96">
+                <div className="bg-gray-100 px-4 py-3 border-b flex items-center shrink-0">
+                  <span className="font-semibold text-gray-700 text-sm">Histórico de Conversa</span>
+                </div>
 
-              <div className="prose prose-sm sm:prose-base max-w-none text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {responseData.message}
+                <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4">
+                  {chatHistory.map((item, index) => {
+                    const isUser = item.role === 'user';
+                    return (
+                      <div
+                        key={index}
+                        className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] px-5 py-3 rounded-2xl ${isUser
+                              ? 'bg-blue-600 text-white rounded-tr-sm shadow-md'
+                              : 'bg-gray-100 text-gray-800 rounded-tl-sm border border-gray-200 shadow-sm'
+                            }`}
+                        >
+                          <p className="whitespace-pre-wrap text-[15px] leading-relaxed">
+                            {item.parts[0]?.text}
+                          </p>
+                          <p className={`text-[10px] mt-2 block opacity-70 ${isUser ? 'text-right' : 'text-left'}`}>
+                            {isUser ? 'Você' : 'Gemini'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
+            )}
           </div>
         )}
       </div>
