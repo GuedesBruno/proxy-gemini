@@ -53,7 +53,7 @@ export default function LoginPage() {
         setErrorMsg(null);
 
         try {
-            const authResult = await loginWithEmail(email, password);
+            const authResult = await loginWithEmail(email.trim(), password.trim());
             if (authResult?.user) {
                 router.push('/dashboard');
             }

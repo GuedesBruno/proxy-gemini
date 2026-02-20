@@ -98,7 +98,12 @@ export async function POST(req: Request) {
             );
         }
 
-        const validSerialNumber = serialNumber || 'TECA-' + Math.floor(1000 + Math.random() * 9000);
+        let validSerialNumber = serialNumber || 'TECA-' + Math.floor(1000 + Math.random() * 9000);
+
+        // Firebase Auth REQUIRES absolute minimum 6 characters for a password
+        if (validSerialNumber.length < 6) {
+            validSerialNumber = validSerialNumber.padStart(6, '0');
+        }
 
         try {
             // 1. Cria o Usuário no Firebase Auth usando S/N como senha
@@ -110,7 +115,7 @@ export async function POST(req: Request) {
         } catch (authError: any) {
             console.error('Erro ao criar Auth User:', authError);
             return NextResponse.json(
-                { error: 'Falha ao provisionar usuário de Autenticação. Verifique se o e-mail já existe.', details: authError.message },
+                { error: `Falha ao provisionar usuário de Autenticação. Motivo: ${authError.message}` },
                 { status: 400 }
             );
         }

@@ -22,12 +22,11 @@ export default function Home() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const querySnapshot = await getDocs(collection(dbClient, 'users'));
-        const usersList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().name || 'Sem Nome',
-          email: doc.data().email
-        }));
+        const res = await fetch('/api/admin/users');
+        if (!res.ok) throw new Error('Falha ao obter lista de usuários');
+        const usersList: any[] = await res.json();
+
+        // Filter out users without IDs or emails if needed, although the API should be clean
         setAvailableUsers(usersList);
         if (usersList.length > 0) {
           setSimulatedUserId(usersList[0].id);
