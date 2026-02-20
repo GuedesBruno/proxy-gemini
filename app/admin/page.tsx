@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Users, Zap, DollarSign, Activity } from 'lucide-react';
 
 interface DashboardData {
+    totalUsers: number;
     totalRequests: number;
     totalTokens: number;
     estimatedCost: string;
@@ -52,14 +53,14 @@ export default function AdminDashboard() {
             {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-                {/* Card 1 - Total de Usuários (Mocked para manter interface estetica enquanto não temos subcollection de listagem aqui) */}
+                {/* Card 1 - Total de Usuários */}
                 <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col justify-center">
                     <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Total de Usuários</p>
                     <div className="mt-2 flex items-center space-x-3">
                         <div className="p-2 bg-blue-50 text-blue-500 rounded-md">
                             <Users className="w-6 h-6" />
                         </div>
-                        <p className="text-3xl font-bold text-[#002554]">124</p>
+                        <p className="text-3xl font-bold text-[#002554]">{data.totalUsers}</p>
                     </div>
                 </div>
 

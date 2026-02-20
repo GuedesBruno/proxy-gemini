@@ -88,9 +88,6 @@ export default function LoginPage() {
                 <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                     LIBER<sup className="text-xs text-[#002554] font-bold">®</sup> 2026.AI
                 </h2>
-                <p className="mt-2 text-center text-sm font-medium text-slate-500 tracking-wide">
-                    Gateway Proxy de Inteligência Artificial
-                </p>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
@@ -124,12 +121,12 @@ export default function LoginPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-[#002554] mb-1">Senha (N/S do Liber)</label>
+                                <label className="block text-sm font-bold text-[#002554] mb-1">Senha</label>
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="TECA-XXXX"
+                                    placeholder="Digite sua senha"
                                     className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none transition-all bg-slate-50 focus:bg-white font-mono"
                                     required
                                 />
@@ -151,7 +148,7 @@ export default function LoginPage() {
                                         Entrando...
                                     </span>
                                 ) : (
-                                    'Entrar no Sistema'
+                                    'Entrar'
                                 )}
                             </button>
                         </form>

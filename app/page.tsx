@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { dbClient } from '@/lib/auth';
+import { collection, getDocs } from 'firebase/firestore';
+import { Paperclip, Send, Loader2 } from 'lucide-react';
 
 export default function Home() {
   const [appId, setAppId] = useState('liber_chat');
+  const [simulatedUserId, setSimulatedUserId] = useState('');
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [message, setMessage] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -13,6 +18,26 @@ export default function Home() {
     tokens_consumed: number;
     updated_balance: number;
   } | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(dbClient, 'users'));
+        const usersList = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name || 'Sem Nome',
+          email: doc.data().email
+        }));
+        setAvailableUsers(usersList);
+        if (usersList.length > 0) {
+          setSimulatedUserId(usersList[0].id);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar usuários para simulação:", err);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   // Helper function to read file as Base64 string
   const fileToBase64 = (file: File): Promise<string> => {
@@ -59,7 +84,7 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: 'user_teste_123',
+          userId: simulatedUserId,
           appId,
           history: updatedHistory,
           image: imagePayload
@@ -126,68 +151,91 @@ export default function Home() {
               </select>
             </div>
 
-            {/* Input - Message */}
+            {/* Input - User Selector */}
+            {availableUsers.length > 0 && (
+              <div>
+                <label htmlFor="simulatedUser" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Simular Escopo de Usuário (Consumo de Tokens na Base):
+                </label>
+                <select
+                  id="simulatedUser"
+                  value={simulatedUserId}
+                  onChange={(e) => setSimulatedUserId(e.target.value)}
+                  className="block w-full rounded-lg border-2 border-gray-200 py-3 pl-4 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 bg-gray-50 transition-all duration-200 text-gray-800"
+                >
+                  {availableUsers.map((u) => (
+                    <option key={u.id} value={u.id} className="font-medium text-gray-700">
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Input - Message & Image Attach */}
             <div>
               <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2">
                 Sua Mensagem
               </label>
-              <textarea
-                id="message"
-                rows={4}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="block w-full rounded-lg border-2 border-gray-200 py-3 px-4 text-base focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 bg-gray-50 transition-all duration-200 resize-none text-gray-800 placeholder:text-gray-400"
-                placeholder="Insira o texto base para a geração de conteúdo..."
-                required
-              />
-            </div>
 
-            {/* Input - File / Image Upload */}
-            <div>
-              <label htmlFor="imageUpload" className="block text-sm font-semibold text-gray-700 mb-2">
-                Anexar Imagem (Opcional, aceita JPEG, PNG, WEBP)
-              </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="space-y-1 text-center">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                    aria-hidden="true"
+              <div className="relative flex items-end rounded-lg border-2 border-gray-200 bg-gray-50 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all duration-200">
+                <div className="flex-1">
+                  <textarea
+                    id="message"
+                    rows={3}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="block w-full rounded-lg border-none py-3 px-4 text-base focus:ring-0 bg-transparent resize-none text-gray-800 placeholder:text-gray-400"
+                    placeholder="Insira o texto base para a geração de conteúdo..."
+                    required
+                  />
+                  {imageFile && (
+                    <div className="px-4 pb-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 truncate max-w-[200px]">
+                        {imageFile.name}
+                      </span>
+                      <button type="button" onClick={() => setImageFile(null)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Oculto: O Input Real */}
+                <input
+                  id="imageUpload"
+                  name="imageUpload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setImageFile(file || null);
+                  }}
+                />
+
+                {/* Botões anexos e de Envio encapsulados no fundo da borda */}
+                <div className="flex items-center gap-2 p-2 shrink-0 border-l border-gray-200">
+                  <label
+                    htmlFor="imageUpload"
+                    className="cursor-pointer p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-blue-600 transition-colors"
+                    title="Anexar Imagem"
                   >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <div className="flex text-sm text-gray-600 justify-center">
-                    <label
-                      htmlFor="imageUpload"
-                      className="relative cursor-pointer bg-transparent rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                    >
-                      <span>Faça o upload de um arquivo</span>
-                      <input
-                        id="imageUpload"
-                        name="imageUpload"
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          setImageFile(file || null);
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {imageFile ? `Arquivo selecionado: ${imageFile.name}` : 'PNG, JPG, WEBP até 4MB'}
-                  </p>
+                    <Paperclip className="w-5 h-5" />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={loading || !message.trim()}
+                    className={`p-2 rounded-full transition-all flex items-center justify-center 
+                            ${(loading || !message.trim()) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}
+                        `}
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
+                  </button>
                 </div>
               </div>
             </div>
+
+
 
             {/* Error Message */}
             {error && (
@@ -208,28 +256,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading || !message.trim()}
-              className={`group relative w-full flex justify-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-base font-bold text-white 
-                ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50'} 
-                transition-all duration-300 ease-in-out`}
-            >
-              <div className="flex items-center space-x-2">
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Processando seu pedido...</span>
-                  </>
-                ) : (
-                  <span>Enviar Solicitação</span>
-                )}
-              </div>
-            </button>
           </form>
         </div>
 
@@ -278,8 +304,8 @@ export default function Home() {
                       >
                         <div
                           className={`max-w-[80%] px-5 py-3 rounded-2xl ${isUser
-                              ? 'bg-blue-600 text-white rounded-tr-sm shadow-md'
-                              : 'bg-gray-100 text-gray-800 rounded-tl-sm border border-gray-200 shadow-sm'
+                            ? 'bg-blue-600 text-white rounded-tr-sm shadow-md'
+                            : 'bg-gray-100 text-gray-800 rounded-tl-sm border border-gray-200 shadow-sm'
                             }`}
                         >
                           <p className="whitespace-pre-wrap text-[15px] leading-relaxed">

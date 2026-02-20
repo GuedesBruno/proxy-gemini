@@ -30,7 +30,6 @@ export default function CheckoutPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: "vS3U52B3pW0L5G1Eszh4", // LOGGED_ID manual/temporário
                     planId: plan.id
                 })
             });

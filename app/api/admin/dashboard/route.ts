@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
+        // Query users count from the server efficiently using aggregate count API
+        const usersCountSnapshot = await db.collection('users').count().get();
+        const totalUsers = usersCountSnapshot.data().count;
+
         const usageLogsSnapshot = await db.collection('usage_logs').get();
 
         const totalRequests = usageLogsSnapshot.size;
@@ -73,6 +77,7 @@ export async function GET() {
         // chartData.sort((a, b) => a.date.localeCompare(b.date));
 
         return NextResponse.json({
+            totalUsers,
             totalRequests,
             totalTokens,
             estimatedCost,
