@@ -1,7 +1,20 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+    signInWithEmailAndPassword
+} from 'firebase/auth';
+import {
+    getFirestore,
+    collection,
+    query,
+    where,
+    getDocs
+} from 'firebase/firestore';
 
+// Configurações do SDK Client (Usando as chaves do Firebase Console)
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -11,17 +24,28 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase SDK Client
+// Inicializa o Firebase apenas uma vez
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 export const dbClient = getFirestore(app);
 
-const provider = new GoogleAuthProvider();
+const googleProvider = new GoogleAuthProvider();
 
+/**
+ * Função Auxiliar: Define os cookies de sessão
+ */
+const setSessionCookies = (userId: string, email: string) => {
+    document.cookie = `session_userId=${userId}; path=/; max-age=86400`;
+    document.cookie = `session_email=${email}; path=/; max-age=86400`;
+};
+
+/**
+ * LOGIN COM GOOGLE
+ */
 export const signInWithGoogle = async () => {
     try {
-        const result = await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
 
         if (!user.email) {
@@ -29,66 +53,81 @@ export const signInWithGoogle = async () => {
             throw new Error('E-mail não fornecido pelo Google.');
         }
 
-        // Gatekeeper: Check Firestore for allowed users
+        // 1. Verificação de Super Admin (bi@tecassistiva.com.br)
+        if (user.email === 'bi@tecassistiva.com.br') {
+            setSessionCookies('admin_master', user.email);
+            return { user, firestoreUserId: 'admin_master' };
+        }
+
+        // 2. Gatekeeper: Busca o usuário na coleção 'users' do Firestore
         const usersRef = collection(dbClient, 'users');
         const q = query(usersRef, where('email', '==', user.email));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
             await signOut(auth);
-            throw new Error('E-mail não autorizado pela Tecassistiva');
+            throw new Error('Acesso negado: E-mail não autorizado pela Tecassistiva.');
         }
 
-        // Se o usuário existir, capturamos o ID armazenado no Firestore
         const firestoreUserId = querySnapshot.docs[0].id;
-
-        // Salve sessão ativa via cookie para acesso seguro de middleware/RSC (simulação client-side API)
-        document.cookie = `session_userId=${firestoreUserId}; path=/; max-age=86400`;
-        document.cookie = `session_email=${user.email}; path=/; max-age=86400`;
+        setSessionCookies(firestoreUserId, user.email);
 
         return { user, firestoreUserId };
-    } catch (error) {
-        console.error("Erro no login com Google:", error);
+    } catch (error: any) {
+        console.error("Erro no login com Google:", error.message);
         throw error;
     }
 };
 
-export const loginWithEmail = async (email: string, password: string) => {
+/**
+ * LOGIN COM E-MAIL E SENHA (S/N DO LIBER)
+ */
+export const loginWithEmail = async (email: string, serialNumber: string) => {
     try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
+        // O Firebase Auth usará o e-mail e o Número de Série (senha) cadastrados pelo Admin
+        const result = await signInWithEmailAndPassword(auth, email, serialNumber);
         const user = result.user;
 
         if (!user.email) {
             await signOut(auth);
-            throw new Error('E-mail não fornecido pelo Firebase.');
+            throw new Error('Erro na autenticação.');
         }
 
-        // Gatekeeper: Check Firestore for allowed users
+        // 1. Verificação de Super Admin
+        if (user.email === 'bi@tecassistiva.com.br') {
+            setSessionCookies('admin_master', user.email);
+            return { user, firestoreUserId: 'admin_master' };
+        }
+
+        // 2. Gatekeeper: Valida existência no Firestore
         const usersRef = collection(dbClient, 'users');
         const q = query(usersRef, where('email', '==', user.email));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
             await signOut(auth);
-            throw new Error('E-mail não autorizado pela Tecassistiva');
+            throw new Error('Usuário não encontrado na base de dados do LIBER®.');
         }
 
         const firestoreUserId = querySnapshot.docs[0].id;
-
-        // Salve sessão ativa via cookie
-        document.cookie = `session_userId=${firestoreUserId}; path=/; max-age=86400`;
-        document.cookie = `session_email=${user.email}; path=/; max-age=86400`;
+        setSessionCookies(firestoreUserId, user.email);
 
         return { user, firestoreUserId };
-    } catch (error) {
-        console.error("Erro no login com E-mail:", error);
+    } catch (error: any) {
+        console.error("Erro no login com E-mail:", error.message);
         throw error;
     }
 };
 
+/**
+ * LOGOUT
+ */
 export const logOut = async () => {
     try {
         await signOut(auth);
+        // Limpa os cookies de sessão
+        document.cookie = "session_userId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        document.cookie = "session_email=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     } catch (error) {
         console.error("Erro ao fazer logout:", error);
         throw error;
