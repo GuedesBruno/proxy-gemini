@@ -1,11 +1,27 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { LogOut, Code } from 'lucide-react';
+import { logOut } from '@/lib/auth';
 
 export default function AdminLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        try {
+            await logOut();
+            router.push('/login');
+        } catch (error) {
+            console.error("Erro ao sair:", error);
+        }
+    };
+
     return (
         <div className="flex bg-slate-50 font-sans antialiased text-gray-900">
             {/* Sidebar (Fixed on Desktop) */}
@@ -43,6 +59,13 @@ export default function AdminLayout({
                         Usuários
                     </Link>
 
+                    <Link href="/admin/apps" className="flex items-center px-4 py-3 text-sm font-medium rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors group">
+                        <svg className="w-5 h-5 mr-3 text-white/50 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Aplicações
+                    </Link>
+
                     <Link href="/admin/modulos" className="flex items-center px-4 py-3 text-sm font-medium rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors group">
                         <svg className="w-5 h-5 mr-3 text-white/50 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -50,10 +73,15 @@ export default function AdminLayout({
                         Módulos IA
                     </Link>
 
+                    <Link href="/admin/api-docs" className="flex items-center px-4 py-3 text-sm font-medium rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors group">
+                        <Code className="w-5 h-5 mr-3 text-white/50 group-hover:text-white" />
+                        Documentação API
+                    </Link>
+
                 </div>
 
-                {/* User Info (Bottom) */}
-                <div className="shrink-0 p-4 border-t border-white/10">
+                {/* User Info & Logout (Bottom) */}
+                <div className="shrink-0 p-4 border-t border-white/10 flex items-center justify-between">
                     <div className="flex items-center">
                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white border border-white/20">
                             A
@@ -63,6 +91,13 @@ export default function AdminLayout({
                             <p className="text-xs text-white/50">master</p>
                         </div>
                     </div>
+                    <button
+                        onClick={handleLogout}
+                        title="Sair do Painel"
+                        className="p-2 text-white/50 hover:text-red-400 hover:bg-white/5 rounded-md transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
                 </div>
             </aside>
 

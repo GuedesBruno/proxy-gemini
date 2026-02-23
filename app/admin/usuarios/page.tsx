@@ -35,9 +35,9 @@ export default function UsersManagement() {
     const [formPlan, setFormPlan] = useState('');
     const [formTokens, setFormTokens] = useState('');
 
-    // Token Top-up per user
-    const [addingTokenFor, setAddingTokenFor] = useState<string | null>(null);
-    const [inputValues, setInputValues] = useState<{ [key: string]: string }>({});
+    // Inline Token Edit
+    const [editingBalanceFor, setEditingBalanceFor] = useState<string | null>(null);
+    const [balanceInput, setBalanceInput] = useState<{ [key: string]: string }>({});
 
     useEffect(() => {
         fetchUsers();
@@ -173,24 +173,33 @@ export default function UsersManagement() {
         }
     }
 
-    // Inline Token Top-Up
-    const handleAddTokens = async (userId: string) => {
-        const inputValue = inputValues[userId];
-        const amountToAdd = parseInt(inputValue, 10);
+    // Inline Balance Edit
+    const handleUpdateBalance = async (userId: string) => {
+        const inputValue = balanceInput[userId];
+        if (inputValue === undefined) return;
 
-        if (isNaN(amountToAdd) || amountToAdd <= 0) {
-            alert('Por favor, insira uma quantidade válida.');
+        const newBalance = parseInt(inputValue, 10);
+
+        // Se a input for vazia ou inválida cancela a edição
+        if (isNaN(newBalance) || newBalance < 0) {
+            setEditingBalanceFor(null);
             return;
         }
 
-        setAddingTokenFor(userId);
+        const currentUser = users.find(u => u.id === userId);
+        if (currentUser && currentUser.token_balance === newBalance) {
+            setEditingBalanceFor(null);
+            return; // Sem alteração
+        }
+
         setErrorMsg(null);
+        setEditingBalanceFor(userId);
 
         try {
             const res = await fetch('/api/admin/users', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, amountToAdd })
+                body: JSON.stringify({ userId, set_balance: newBalance })
             });
 
             if (!res.ok) {
@@ -200,12 +209,11 @@ export default function UsersManagement() {
 
             const data = await res.json();
             setUsers(prev => prev.map(user => user.id === userId ? { ...user, token_balance: data.new_balance } : user));
-            setInputValues(prev => ({ ...prev, [userId]: '' }));
-
+            displaySuccess('Saldo atualizado com sucesso!');
         } catch (error: any) {
-            setErrorMsg(error.message || 'Erro ao atualizar tokens.');
+            setErrorMsg(error.message || 'Erro ao atualizar saldo absoluto.');
         } finally {
-            setAddingTokenFor(null);
+            setEditingBalanceFor(null);
         }
     };
 
@@ -263,7 +271,8 @@ export default function UsersManagement() {
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Contato</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Plano</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">N/S Liber</th>
-                                    <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Saldo / Gastos</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Disponível</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Gastos</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider text-right">Ações Principais</th>
                                 </tr>
                             </thead>
@@ -305,49 +314,32 @@ export default function UsersManagement() {
                                         </td>
 
                                         <td className="py-4 px-6 whitespace-nowrap">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full w-fit border border-emerald-100 text-xs text-center justify-center">
-                                                    Sal: {(user.token_balance || 0).toLocaleString()} <DollarSign className="w-3 h-3 ml-1" />
-                                                </div>
-                                                <div className="flex items-center text-slate-500 font-semibold px-2 text-xs">
-                                                    Gas: {(user.total_spent_tokens || 0).toLocaleString()}
-                                                </div>
+                                            <div className="flex items-center text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-lg w-fit border border-emerald-100 text-sm shadow-sm hover:shadow transition-shadow">
+                                                <input
+                                                    type="number"
+                                                    value={balanceInput[user.id] !== undefined ? balanceInput[user.id] : (user.token_balance || 0)}
+                                                    onChange={(e) => setBalanceInput(prev => ({ ...prev, [user.id]: e.target.value }))}
+                                                    onBlur={() => handleUpdateBalance(user.id)}
+                                                    disabled={editingBalanceFor === user.id}
+                                                    className="bg-transparent border-none p-0 outline-none focus:ring-0 w-24 font-bold text-center text-emerald-700 disabled:opacity-50"
+                                                />
+                                            </div>
+                                        </td>
+
+                                        <td className="py-4 px-6 whitespace-nowrap">
+                                            <div className="flex items-center text-slate-500 font-medium bg-slate-100 px-3 py-1 rounded-lg text-xs border border-slate-200 w-fit">
+                                                <span className="font-bold text-slate-700">{(user.total_spent_tokens || 0).toLocaleString()}</span>
                                             </div>
                                         </td>
 
                                         <td className="py-4 px-6 whitespace-nowrap text-right flex items-center justify-end gap-5">
-
                                             {/* Action Toggles (Edit / Delete) */}
-                                            <div className="flex items-center gap-2 border-r border-slate-200 pr-5">
+                                            <div className="flex items-center gap-2 pr-2">
                                                 <button onClick={() => openModal(user)} className="text-slate-400 hover:text-blue-600 transition-colors p-1" title="Editar Usuário">
                                                     <Pencil className="w-5 h-5" />
                                                 </button>
                                                 <button onClick={() => handleDelete(user.id, user.name || user.email || user.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1" title="Apagar Irreversivelmente">
                                                     <Trash2 className="w-5 h-5" />
-                                                </button>
-                                            </div>
-
-                                            {/* Add Tokens Form */}
-                                            <div className="flex items-center space-x-2">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    disabled={addingTokenFor === user.id}
-                                                    placeholder="Qtd"
-                                                    value={inputValues[user.id] || ''}
-                                                    onChange={(e) => setInputValues(prev => ({ ...prev, [user.id]: e.target.value }))}
-                                                    className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#002554] text-gray-700 placeholder-slate-400"
-                                                />
-                                                <button
-                                                    onClick={() => handleAddTokens(user.id)}
-                                                    disabled={addingTokenFor === user.id || !inputValues[user.id]}
-                                                    className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded text-white transition-all
-                                                        ${(addingTokenFor === user.id || !inputValues[user.id])
-                                                            ? 'bg-slate-400 cursor-not-allowed opacity-75'
-                                                            : 'bg-[#002554] hover:bg-blue-900 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-[#002554]'}
-                                                    `}
-                                                >
-                                                    {addingTokenFor === user.id ? '...' : '+ Tokens'}
                                                 </button>
                                             </div>
                                         </td>
@@ -405,7 +397,17 @@ export default function UsersManagement() {
                                 <label className="text-sm font-bold text-[#002554]">Plano do Usuário</label>
                                 <select
                                     value={formPlan}
-                                    onChange={e => setFormPlan(e.target.value)}
+                                    onChange={(e) => {
+                                        const selectedPlan = e.target.value;
+                                        setFormPlan(selectedPlan);
+                                        // Auto-fill tokens if creating new user
+                                        if (!editingUser) {
+                                            if (selectedPlan === 'ouro') setFormTokens('100000');
+                                            else if (selectedPlan === 'prata') setFormTokens('30000');
+                                            else if (selectedPlan === 'bronze') setFormTokens('10000');
+                                            else setFormTokens('0');
+                                        }
+                                    }}
                                     disabled={processing}
                                     className="w-full md:w-1/2 rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-[#002554]"
                                 >

@@ -25,7 +25,7 @@ const firebaseConfig = {
 };
 
 // Inicializa o Firebase apenas uma vez
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 export const dbClient = getFirestore(app);
@@ -53,23 +53,23 @@ export const signInWithGoogle = async () => {
             throw new Error('E-mail não fornecido pelo Google.');
         }
 
-        // 1. Verificação de Super Admin (bi@tecassistiva.com.br)
-        if (user.email === 'bi@tecassistiva.com.br') {
-            setSessionCookies('admin_master', user.email);
-            return { user, firestoreUserId: 'admin_master' };
-        }
+        // O Gatekeeper no servidor fará a validação
 
-        // 2. Gatekeeper: Busca o usuário na coleção 'users' do Firestore
-        const usersRef = collection(dbClient, 'users');
-        const q = query(usersRef, where('email', '==', user.email));
-        const querySnapshot = await getDocs(q);
+        // 2. Gatekeeper: Valida no servidor para evitar erros de permissão no Client Firebase
+        const res = await fetch('/api/user/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email })
+        });
 
-        if (querySnapshot.empty) {
+        const data = await res.json();
+
+        if (!res.ok || !data.authorized) {
             await signOut(auth);
-            throw new Error('Acesso negado: E-mail não autorizado pela Tecassistiva.');
+            throw new Error(data.error || 'Acesso negado: E-mail não autorizado pela Tecassistiva.');
         }
 
-        const firestoreUserId = querySnapshot.docs[0].id;
+        const firestoreUserId = data.firestoreUserId;
         setSessionCookies(firestoreUserId, user.email);
 
         return { user, firestoreUserId };
@@ -97,23 +97,23 @@ export const loginWithEmail = async (email: string, serialNumber: string) => {
             throw new Error('Erro na autenticação.');
         }
 
-        // 1. Verificação de Super Admin
-        if (user.email === 'bi@tecassistiva.com.br') {
-            setSessionCookies('admin_master', user.email);
-            return { user, firestoreUserId: 'admin_master' };
-        }
+        // O Gatekeeper no servidor fará a validação
 
-        // 2. Gatekeeper: Valida existência no Firestore
-        const usersRef = collection(dbClient, 'users');
-        const q = query(usersRef, where('email', '==', user.email));
-        const querySnapshot = await getDocs(q);
+        // 2. Gatekeeper: Valida no servidor para evitar erros de permissão no Client Firebase
+        const res = await fetch('/api/user/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email })
+        });
 
-        if (querySnapshot.empty) {
+        const data = await res.json();
+
+        if (!res.ok || !data.authorized) {
             await signOut(auth);
-            throw new Error('Usuário não encontrado na base de dados do LIBER®.');
+            throw new Error(data.error || 'Usuário não encontrado na base de dados do LIBER®.');
         }
 
-        const firestoreUserId = querySnapshot.docs[0].id;
+        const firestoreUserId = data.firestoreUserId;
         setSessionCookies(firestoreUserId, user.email);
 
         return { user, firestoreUserId };

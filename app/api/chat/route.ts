@@ -7,10 +7,8 @@ import admin from 'firebase-admin';
 interface ChatRequestBody {
     userId: string;
     appId: string;
-    history: {
-        role: 'user' | 'model';
-        parts: any[];
-    }[];
+    message: string;
+    threadId?: string;
     image?: {
         base64: string;
         mimeType: string;
@@ -22,14 +20,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: Request) {
     try {
-        // Extraia userId, appId, history e opcionalmente a imagem do corpo da requisição JSON
+        // Extraia userId, appId, message, threadId e opcionalmente a imagem do corpo da requisição JSON
         const body: Partial<ChatRequestBody> = await req.json();
-        const { userId, appId, history, image } = body;
+        const { userId, appId, message, threadId, image } = body;
 
-        // Verificação de segurança de tipos
-        if (!userId || !appId || !history || !Array.isArray(history) || history.length === 0) {
+        // Validação mínima
+        if (!userId || !appId || !message || typeof message !== 'string') {
             return NextResponse.json(
-                { error: 'Parâmetros obrigatórios ausentes ou inválidos: userId, appId, ou array de history.' },
+                { error: 'Parâmetros obrigatórios ausentes ou inválidos: userId, appId, ou message.' },
                 { status: 400 }
             );
         }
@@ -43,10 +41,30 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Aplicação não encontrada.' }, { status: 404 });
         }
 
-        // Tipando os dados recebidos do Firestore
-        const appData = appDoc.data();
-        const prePrompt: string = appData?.pre_prompt || '';
-        const modelName: string = appData?.model_name || 'gemini-2.5-flash-lite';
+        // Tipando os dados recebidos do Firestore (App Specifics)
+        const appData = appDoc.data() || {};
+
+        // Novas configurações Nível Aplicação (Descentralizado)
+        const appModel = appData.llm_model || 'gemini-2.5-flash';
+        const appTemp = appData.temperature !== undefined ? appData.temperature : 0.7;
+        const appSystemPrompt = appData.system_prompt || '';
+
+        // Campos legados de Identidade e Regras Adicionais
+        const prePrompt: string = appData.pre_prompt || '';
+        const appDescription: string = appData.description || '';
+
+        // Montagem do Pipeline de Contexto:
+        // 1. Identidade (System Prompt) -> 2. Descrição (Contexto) -> 3. Regras Especiais (Pre Prompt)
+        let finalSystemInstruction = appSystemPrompt ? `${appSystemPrompt}` : '';
+
+        if (appDescription) {
+            finalSystemInstruction += finalSystemInstruction ? `\n\n[Contexto da Aplicação]:\n${appDescription}` : `[Contexto da Aplicação]:\n${appDescription}`;
+        }
+        if (prePrompt) {
+            finalSystemInstruction += finalSystemInstruction ? `\n\n[Regras Específicas do App/Bot]:\n${prePrompt}` : `[Regras Específicas do App/Bot]:\n${prePrompt}`;
+        }
+
+        finalSystemInstruction = finalSystemInstruction.trim();
 
         // Busque o documento correspondente ao userId na collection users para pegar o token_balance
         const userRef = db.collection('users').doc(userId);
@@ -67,30 +85,56 @@ export async function POST(req: Request) {
             );
         }
 
-        // Inicialize o modelo dinamicamente e passe o pre_prompt como systemInstruction
+        // Inicialize o modelo dinamicamente usando as configurações específicas da APLICAÇÃO
         const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: prePrompt || undefined,
+            model: appModel,
+            systemInstruction: finalSystemInstruction || undefined,
+            generationConfig: {
+                temperature: appTemp
+            }
         });
 
-        // Prepara os parâmetros para enviar o histórico inteiro
-        let generateParams: any = { contents: history };
+        // ------------------ GERENCIAMENTO DA THREAD (MEMÓRIA) ------------------
+        let history: { role: 'user' | 'model'; parts: any[] }[] = [];
+        let currentThreadId = threadId;
+        let threadRef: admin.firestore.DocumentReference;
 
-        // Se existir uma imagem, injeta no array de parts da última mensagem (do usuário)
-        if (image && image.base64 && image.mimeType) {
-            const imagePart = {
-                inlineData: {
-                    data: image.base64,
-                    mimeType: image.mimeType
-                }
-            };
-
-            const lastMessage = history[history.length - 1];
-            if (lastMessage && Array.isArray(lastMessage.parts)) {
-                // Adiciona a imagem no array de partes da última mensagem enviada pelo usuário
-                lastMessage.parts.push(imagePart);
+        if (currentThreadId) {
+            // Tenta recuperar o histórico do Firestore
+            threadRef = db.collection('threads').doc(currentThreadId);
+            const threadDoc = await threadRef.get();
+            if (threadDoc.exists) {
+                history = threadDoc.data()?.history || [];
+            } else {
+                // Caso mandem um threadId que não existe mais, criamos um zerado
+                threadRef = db.collection('threads').doc(); // Cria um novo ID
+                currentThreadId = threadRef.id;
+                history = [];
             }
+        } else {
+            // Se não veio thread, cria uma ref nova que vai gerar um id
+            threadRef = db.collection('threads').doc();
+            currentThreadId = threadRef.id;
         }
+
+        // Adiciona a nova mensagem do usuário ao histórico local
+        const userMsgPart: any = { text: message };
+
+        // Se existir uma imagem enviada pelo usuário na nova requisição
+        if (image && image.base64 && image.mimeType) {
+            userMsgPart.inlineData = {
+                data: image.base64,
+                mimeType: image.mimeType
+            };
+        }
+
+        history.push({
+            role: 'user',
+            parts: [userMsgPart]
+        });
+
+        // Prepara os parâmetros para enviar todo o histórico montado pro Gemini
+        let generateParams: any = { contents: history };
 
         // Chame o método generateContent
         const result = await model.generateContent(generateParams);
@@ -111,20 +155,34 @@ export async function POST(req: Request) {
         await db.collection('usage_logs').add({
             userId,
             appId,
-            model_name: modelName,
+            model_name: appModel, // Agora salva qual modelo a Aplicação usou exatamente
             tokens_used: tokenCount,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
         const updatedBalance: number = Math.max(0, currentTokenBalance - tokenCount);
 
-        // Retorne contendo: a mensagem do Gemini, a quantidade de tokens consumidos e o saldo atualizado.
+        // Salva a resposta da IA no histórico
+        history.push({
+            role: 'model',
+            parts: [{ text: responseText }]
+        });
+
+        // Grava a thread (histórico da conversa inteiro) de volta no Firestore
+        await threadRef.set({
+            userId,
+            appId,
+            history,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // Retorne a resposta e o saldo atualizado junto com a ThreadId
         return NextResponse.json({
             message: responseText,
+            threadId: currentThreadId,
             tokens_consumed: tokenCount,
-            updated_balance: updatedBalance,
-        }, { status: 200 });
-
+            updated_balance: currentTokenBalance - tokenCount
+        });
     } catch (error: Error | any) {
         console.error('Erro na rota de chat:', error);
         return NextResponse.json(

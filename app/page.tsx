@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { dbClient } from '@/lib/auth';
 import { collection, getDocs } from 'firebase/firestore';
-import { Paperclip, Send, Loader2 } from 'lucide-react';
+import { Paperclip, Send, Loader2, Trash2 } from 'lucide-react';
 
 export default function Home() {
-  const [appId, setAppId] = useState('liber_chat');
+  const [appId, setAppId] = useState('');
+  const [availableApps, setAvailableApps] = useState<any[]>([]);
   const [simulatedUserId, setSimulatedUserId] = useState('');
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [message, setMessage] = useState('');
@@ -14,29 +15,45 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<{ role: string; parts: { text: string }[] }[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
   const [responseData, setResponseData] = useState<{
     tokens_consumed: number;
     updated_balance: number;
   } | null>(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchSelectData = async () => {
       try {
-        const res = await fetch('/api/admin/users');
-        if (!res.ok) throw new Error('Falha ao obter lista de usuários');
-        const usersList: any[] = await res.json();
+        const [resUsers, resApps] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/admin/applications')
+        ]);
 
-        // Filter out users without IDs or emails if needed, although the API should be clean
-        setAvailableUsers(usersList);
-        if (usersList.length > 0) {
-          setSimulatedUserId(usersList[0].id);
+        if (resUsers.ok) {
+          const usersList = await resUsers.json();
+          setAvailableUsers(usersList);
+          if (usersList.length > 0) setSimulatedUserId(usersList[0].id);
+        }
+
+        if (resApps.ok) {
+          const appsList = await resApps.json();
+          setAvailableApps(appsList);
+          if (appsList.length > 0) setAppId(appsList[0].id);
         }
       } catch (err) {
-        console.error("Erro ao buscar usuários para simulação:", err);
+        console.error("Erro ao buscar dados iniciais:", err);
       }
     };
-    fetchUsers();
+    fetchSelectData();
   }, []);
+
+  const clearHistory = () => {
+    if (confirm('Tem certeza que deseja limpar o histórico de conversa com este App? Isto forçará o proxy a criar uma nova Thread de sessão limpa.')) {
+      setChatHistory([]);
+      setThreadId(null);
+      setResponseData(null);
+    }
+  };
 
   // Helper function to read file as Base64 string
   const fileToBase64 = (file: File): Promise<string> => {
@@ -74,31 +91,48 @@ export default function Home() {
 
       // 1. Atualiza visualmente o historico imediatamente com a mensagem enviada
       const newUserMsg = { role: 'user', parts: [{ text: message }] };
-      const updatedHistory = [...chatHistory, newUserMsg];
-      setChatHistory(updatedHistory);
+      setChatHistory(prev => [...prev, newUserMsg]);
+
+      const reqBody: any = {
+        userId: simulatedUserId,
+        appId,
+        message: message, // Envia só a mensagem
+        image: imagePayload
+      };
+
+      // Se já temos uma thread ativa para essa conversa, passa ela pro servidor.
+      if (threadId) {
+        reqBody.threadId = threadId;
+      }
 
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: simulatedUserId,
-          appId,
-          history: updatedHistory,
-          image: imagePayload
-        }),
+        body: JSON.stringify(reqBody),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        // Se a chamada falhou, removemos a mensagem visual otimista
+        setChatHistory(prev => prev.slice(0, -1));
         throw new Error(data.error || 'Erro ao processar requisição');
       }
 
       setResponseData(data);
 
-      // 2. Adiciona a resposta da IA no histórico
+      // Guarda a Thread ID vinculada no backend para as proximas mensagens
+      if (data.threadId) {
+        setThreadId(data.threadId);
+      }
+
+      // 2. Adiciona a resposta da IA no histórico visual
+      setChatHistory((prev) => [
+        ...prev,
+        { role: 'model', parts: [{ text: data.message }] }
+      ]);
       setChatHistory((prev) => [
         ...prev,
         { role: 'model', parts: [{ text: data.message }] }
@@ -145,8 +179,12 @@ export default function Home() {
                 onChange={(e) => setAppId(e.target.value)}
                 className="block w-full rounded-lg border-2 border-gray-200 py-3 pl-4 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 bg-gray-50 transition-all duration-200 text-gray-800"
               >
-                <option value="liber_chat" className="font-medium text-gray-700">Assistente de Conversação (liber_chat)</option>
-                <option value="liber_vision" className="font-medium text-gray-700">Leitor/Audiodescrição (liber_vision)</option>
+                {availableApps.length === 0 && <option value="">Carregando Apps...</option>}
+                {availableApps.map((a) => (
+                  <option key={a.id} value={a.id} className="font-medium text-gray-700">
+                    {a.id} {a.description ? `- ${a.description}` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -289,8 +327,17 @@ export default function Home() {
             {/* Gemini Response History */}
             {chatHistory.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm relative overflow-hidden flex flex-col h-96">
-                <div className="bg-gray-100 px-4 py-3 border-b flex items-center shrink-0">
+                <div className="bg-gray-100 px-4 py-3 border-b flex items-center justify-between shrink-0">
                   <span className="font-semibold text-gray-700 text-sm">Histórico de Conversa</span>
+                  <button
+                    type="button"
+                    onClick={clearHistory}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1"
+                    title="Limpar Histórico"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="text-xs font-semibold">Limpar</span>
+                  </button>
                 </div>
 
                 <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-4">

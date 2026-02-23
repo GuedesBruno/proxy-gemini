@@ -44,9 +44,9 @@ export async function PATCH(req: Request) {
 
         const updateData: any = {};
 
-        // Caso a requisição seja de top-up de tokens
-        if (typeof amountToAdd === 'number') {
-            updateData.token_balance = admin.firestore.FieldValue.increment(amountToAdd);
+        // Caso a requisição seja de atualização absoluta de tokens
+        if (typeof body.set_balance === 'number') {
+            updateData.token_balance = body.set_balance;
         }
 
         // Caso a requisição traga atualização de perfil
@@ -65,8 +65,11 @@ export async function PATCH(req: Request) {
 
         await userRef.update(updateData);
 
+        const updatedDoc = await userRef.get();
+
         return NextResponse.json({
-            message: 'Utilizador atualizado com sucesso'
+            message: 'Utilizador atualizado com sucesso',
+            new_balance: updatedDoc.data()?.token_balance || 0
         }, { status: 200 });
 
     } catch (error: any) {
@@ -169,7 +172,26 @@ export async function DELETE(req: Request) {
             );
         }
 
-        await db.collection('users').doc(userId).delete();
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData && userData.email) {
+                try {
+                    // Get user from Auth by email
+                    const authUser = await admin.auth().getUserByEmail(userData.email);
+                    // Delete from Auth
+                    await admin.auth().deleteUser(authUser.uid);
+                    console.log(`Deletado Auth App User: ${userData.email}`);
+                } catch (authErr: any) {
+                    // If user is not found in auth it might have been manually deleted, just proceed to delete db record
+                    console.warn(`Aviso de deleção Auth: O email ${userData.email} não foi encontrado/deletado. Mensagem: ${authErr.message}`);
+                }
+            }
+        }
+
+        await userRef.delete();
 
         return NextResponse.json({
             message: 'Utilizador deletado com sucesso'
