@@ -10,8 +10,8 @@ A nossa API Proxy atua como uma barreira segura, gerenciando o saldo de tokens d
 
 Responsável por enviar mensagens para o modelo de Inteligência Artificial e recuperar a resposta.
 
-- **URL:** `POST https://[SEU_DOMINIO]/api/chat` 
-  *(Onde `[SEU_DOMINIO]` é o URL na qual esta API está hospedada, ex: `api.liber.com.br` ou `http://localhost:3000` em testes locais).*
+- **URL:** `POST https://liber.tecassistiva.com.br/api/chat` 
+  *(Para testes locais em desenvolvimento, altere para `http://localhost:3000/api/chat`).*
 - **Content-Type:** `application/json`
 
 ### 1. Iniciando uma Nova Conversa
@@ -20,7 +20,7 @@ Para mandar a PRIMEIRA mensagem do usuário. A API criará uma nova *Thread* de 
 **Requisição (Body JSON):**
 ```json
 {
-  "userId": "ID_DO_USUARIO_AUTENTICADO", // (string) Requerido. O ID do usuário no Firebase Auth
+  "userId": "ID_DO_USUARIO_AUTENTICADO_OU_NUMERO_DE_SERIE", // (string) Requerido. O UID do usuário no Firebase Auth OU o Número de Série (NS/MAC) cadastrado no Painel Admin.
   "appId": "agente-educacional",         // (string) Requerido. O "App ID" exato criado no Painel Admin
   "message": "Olá! Preciso de ajuda com matemática." // (string) Requerido. Texto do usuário final.
 }

@@ -67,12 +67,33 @@ export async function POST(req: Request) {
         finalSystemInstruction = finalSystemInstruction.trim();
 
         // Busque o documento correspondente ao userId na collection users para pegar o token_balance
-        const userRef = db.collection('users').doc(userId);
-        const userDoc = await userRef.get();
+        let userRef = db.collection('users').doc(userId);
+        let userDoc = await userRef.get();
+        let targetUserId = userId; // ID de quem vai efetivamente pagar a conta
 
-        // Se não existir ou o saldo for <= 0, retorne erro 403 (Saldo insuficiente)
+        // Se não existir na tabela de usuários, verifica se é um MAC/Serial Number de Hardawre
         if (!userDoc.exists) {
-            return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+            const deviceRef = db.collection('devices').doc(userId);
+            const deviceDoc = await deviceRef.get();
+
+            if (deviceDoc.exists) {
+                const deviceData = deviceDoc.data();
+                if (deviceData?.status === 'active' && deviceData?.linked_user_id) {
+                    // É um Hardware Liber! Vamos puxar a carteira do verdadeiro dono (Prefeitura/Cliente)
+                    targetUserId = deviceData.linked_user_id;
+                    userRef = db.collection('users').doc(targetUserId);
+                    userDoc = await userRef.get();
+                } else {
+                    return NextResponse.json({ error: 'Dispositivo inativo ou sem proprietário vinculado.' }, { status: 403 });
+                }
+            } else {
+                return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+            }
+        }
+
+        // Se o dono (Usuario real ou Dono do Hardware) não for achado, bloqueia.
+        if (!userDoc.exists) {
+            return NextResponse.json({ error: 'Proprietário do dispositivo não existe na base.' }, { status: 404 });
         }
 
         const userData = userDoc.data();
@@ -153,7 +174,8 @@ export async function POST(req: Request) {
 
         // Adiciona um novo documento na collection usage_logs
         await db.collection('usage_logs').add({
-            userId,
+            userId: targetUserId, // Proprietário logado na transação
+            hardwareId: userId !== targetUserId ? userId : null, // Se foi chamado por device, guarda qual maquina gastou
             appId,
             model_name: appModel, // Agora salva qual modelo a Aplicação usou exatamente
             tokens_used: tokenCount,
@@ -170,7 +192,8 @@ export async function POST(req: Request) {
 
         // Grava a thread (histórico da conversa inteiro) de volta no Firestore
         await threadRef.set({
-            userId,
+            userId: targetUserId,
+            hardwareId: userId !== targetUserId ? userId : null,
             appId,
             history,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()

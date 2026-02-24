@@ -25,10 +25,10 @@ export default function ApiDocsPage() {
                     <div className="bg-white/60 px-4 py-3 border border-blue-100 rounded-lg flex flex-col justify-center font-mono text-sm max-w-xl shadow-inner gap-2">
                         <div className="flex items-center justify-between">
                             <span className="text-[#002554] font-bold">POST</span>
-                            <span className="text-slate-600 truncate px-2 text-xs md:text-sm">https://[SEU_DOMINIO]/api/chat</span>
+                            <span className="text-slate-600 truncate px-2 text-xs md:text-sm">https://liber.tecassistiva.com.br/api/chat</span>
                         </div>
                         <div className="text-[11px] text-slate-500 border-t border-blue-100 pt-2 font-sans">
-                            <strong>Nota:</strong> O <code>[SEU_DOMINIO]</code> é o endereço onde esta API será hospedada na nuvem (ex: <code>https://api.liber.com.br</code>). Para testes locais agorinha mesmo, o caminho é <code>http://localhost:3000/api/chat</code>.
+                            <strong>Produção:</strong> Este é o endereço oficial e definitivo da API para consumir o Proxy Gemini via HTTPS.
                         </div>
                     </div>
                 </div>
@@ -48,7 +48,7 @@ export default function ApiDocsPage() {
                     <div className="bg-[#1e1e1e] p-4 rounded-xl overflow-x-auto shadow-inner relative group border border-slate-800">
                         <pre className="text-emerald-400 font-mono text-[13px] leading-relaxed">
                             {`{
-  "userId": "ID_DO_USUARIO_AUTENTICADO", // (Requerido) O Firebase UID longo gerado no Login.
+  "userId": "ID_DO_USUARIO_OU_S/N",      // (Requerido) O Firebase UID longo ou S/N do Equipamento.
   "appId": "agente-educacional",         // (Requerido) O Nome Único registrado na aba Aplicações.
   "message": "Olá! Preciso de ajuda."    // (Requerido) O texto do usuário.
 }`}
@@ -86,6 +86,34 @@ export default function ApiDocsPage() {
   "appId": "agente-educacional",         
   "message": "Você pode explicar frações?", 
   "threadId": "c7a8b9f2-1234-abcd-..."   // (Requerido) Enviar junto com a nova mensagem
+}`}
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            {/* Hardware Auth */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="border-b border-slate-100 bg-slate-50 p-5 flex items-center gap-3">
+                    <div className="bg-purple-100 text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
+                        <Server className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-slate-800 text-lg">Autenticação M2M (Máquina)</h3>
+                        <p className="text-sm text-slate-500">Fluxo focado em hardwares Liber (Robôs, Totens) onde não há formulário de login.</p>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <div className="text-sm text-slate-600 mb-4 bg-slate-50 p-4 border border-slate-100 rounded-lg">
+                        <strong>Como funciona?</strong> Você cadastra o <code className="bg-slate-200 px-1 rounded">Número de Série</code> do hardware na aba <em>Equipamentos</em> deste painel Administrativo (Ex: LBR-001) e vincula ele a uma Prefeitura/Cliente.
+                        No código do robô/óculos, o <code>userId</code> enviado na chamada POST deve ser o SN físico do aparelho em vez de um Token JWT complexo.
+                    </div>
+                    <div className="bg-[#1e1e1e] p-4 rounded-xl overflow-x-auto shadow-inner border border-slate-800">
+                        <pre className="text-purple-300 font-mono text-[13px] leading-relaxed">
+                            {`{
+  "userId": "LBR-001",                   // Custo repassado à Prefeitura
+  "appId": "agente-leitor",         
+  "message": "O que você vê na minha frente?"
 }`}
                         </pre>
                     </div>
