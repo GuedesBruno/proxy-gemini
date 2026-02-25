@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { serial_number, linked_user_id, model_name } = body;
+        const { serial_number, linked_user_id, model_name, mac_address } = body;
 
         if (!serial_number || !linked_user_id) {
             return NextResponse.json({ error: 'Número de série e Cliente vinculado são origatórios.' }, { status: 400 });
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
         await deviceRef.set({
             linked_user_id,
             model_name: model_name || 'Liber Hardware',
+            mac_address: mac_address || '',
             status: 'active',
             createdAt: new Date().toISOString()
         });
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
     try {
         const body = await req.json();
-        const { serial_number, status, linked_user_id, model_name } = body;
+        const { serial_number, status, linked_user_id, model_name, mac_address } = body;
 
         if (!serial_number) {
             return NextResponse.json({ error: 'Número de série (ID) ausente.' }, { status: 400 });
@@ -62,6 +63,7 @@ export async function PATCH(req: Request) {
         if (status !== undefined) updateData.status = status;
         if (linked_user_id !== undefined) updateData.linked_user_id = linked_user_id;
         if (model_name !== undefined) updateData.model_name = model_name;
+        if (mac_address !== undefined) updateData.mac_address = mac_address;
 
         await deviceRef.update(updateData);
 

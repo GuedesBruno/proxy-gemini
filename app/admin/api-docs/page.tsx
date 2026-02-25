@@ -105,15 +105,16 @@ export default function ApiDocsPage() {
                 </div>
                 <div className="p-6">
                     <div className="text-sm text-slate-600 mb-4 bg-slate-50 p-4 border border-slate-100 rounded-lg">
-                        <strong>Como funciona?</strong> Você cadastra o <code className="bg-slate-200 px-1 rounded">Número de Série</code> do hardware na aba <em>Equipamentos</em> deste painel Administrativo (Ex: LBR-001) e vincula ele a uma Prefeitura/Cliente.
-                        No código do robô/óculos, o <code>userId</code> enviado na chamada POST deve ser o SN físico do aparelho em vez de um Token JWT complexo.
+                        <strong>Como funciona?</strong> Você cadastra o <code className="bg-slate-200 px-1 rounded">Número de Série</code> do hardware na aba <em>Equipamentos</em> deste painel Administrativo (Ex: LBR-001) e vincula ele a um usuário.
+                        No código do Computador Braille Liber ou do Mini-App Android, o <code>userId</code> enviado na chamada POST deve ser o SN físico do aparelho em vez de um Token JWT complexo. É obrigatório enviar também o <code>macAddress</code> real da placa de rede/dispositivo para a Dupla Validação de segurança.
                     </div>
                     <div className="bg-[#1e1e1e] p-4 rounded-xl overflow-x-auto shadow-inner border border-slate-800">
                         <pre className="text-purple-300 font-mono text-[13px] leading-relaxed">
                             {`{
-  "userId": "LBR-001",                   // Custo repassado à Prefeitura
+  "userId": "LBR-001",                   // Custo repassado ao Usuário vinculado
   "appId": "agente-leitor",         
-  "message": "O que você vê na minha frente?"
+  "message": "O que você vê na minha frente?",               // O texto final do usuário ou gatilho visual do app
+  "macAddress": "00:1B:44:11:3A:B7"      // (Requerido p/ Hardware/Miniapps Android) Endereço MAC para Dupla Validação.
 }`}
                         </pre>
                     </div>

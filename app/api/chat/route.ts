@@ -9,6 +9,7 @@ interface ChatRequestBody {
     appId: string;
     message: string;
     threadId?: string;
+    macAddress?: string;
     image?: {
         base64: string;
         mimeType: string;
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     try {
         // Extraia userId, appId, message, threadId e opcionalmente a imagem do corpo da requisição JSON
         const body: Partial<ChatRequestBody> = await req.json();
-        const { userId, appId, message, threadId, image } = body;
+        const { userId, appId, message, threadId, macAddress, image } = body;
 
         // Validação mínima
         if (!userId || !appId || !message || typeof message !== 'string') {
@@ -79,7 +80,27 @@ export async function POST(req: Request) {
             if (deviceDoc.exists) {
                 const deviceData = deviceDoc.data();
                 if (deviceData?.status === 'active' && deviceData?.linked_user_id) {
-                    // É um Hardware Liber! Vamos puxar a carteira do verdadeiro dono (Prefeitura/Cliente)
+
+                    // --- Início: Dupla Validação por MAC Address ---
+                    const dbMacAddress = deviceData.mac_address;
+
+                    if (dbMacAddress) {
+                        // Se existir MAC vinculado nativamente, EXIGE macAddress na requisição para comparar
+                        if (!macAddress || macAddress !== dbMacAddress) {
+                            return NextResponse.json({ error: 'Acesso Negado: Dupla validação falhou (MAC Address Mismatch).' }, { status: 403 });
+                        }
+                    } else if (macAddress) {
+                        // Faz o Pairing Inicial (First Boot Lock)
+                        // Se não tem MAC registrado ainda, salva o primeiro MAC que chamar
+                        await deviceRef.update({ mac_address: macAddress });
+                    } else {
+                        // Sem MAC registrado e enviou S/N puro -> Bloquear ou Permitir? 
+                        // Permitiremos no momento para retrocompatibilidade, mas pode ser fechado futuramente
+                        // return NextResponse.json({ error: 'Acesso Negado: Dispositivo requer vinculação de MAC.' }, { status: 403 });
+                    }
+                    // --- Fim: Dupla Validação ---
+
+                    // É um Hardware Liber! Vamos puxar a carteira do verdadeiro dono (Usuário Conta-Mãe)
                     targetUserId = deviceData.linked_user_id;
                     userRef = db.collection('users').doc(targetUserId);
                     userDoc = await userRef.get();
@@ -98,10 +119,19 @@ export async function POST(req: Request) {
 
         const userData = userDoc.data();
         const currentTokenBalance: number = userData?.token_balance || 0;
+        const currentPlan: string = userData?.plan_id || 'none';
 
         if (currentTokenBalance <= 0) {
             return NextResponse.json(
                 { error: 'Saldo insuficiente. Seu token_balance deve ser maior que zero.' },
+                { status: 403 }
+            );
+        }
+
+        // Feature Gate: Bloquear acesso aos modelos "pro" para clientes que não são do Plano Ouro
+        if (appModel.includes('pro') && currentPlan !== 'ouro') {
+            return NextResponse.json(
+                { error: 'Upgrade Required: O Agente selecionado utiliza um raciocínio complexo que exige o Plano Ouro ativo na sua conta.' },
                 { status: 403 }
             );
         }

@@ -133,10 +133,6 @@ export default function Home() {
         ...prev,
         { role: 'model', parts: [{ text: data.message }] }
       ]);
-      setChatHistory((prev) => [
-        ...prev,
-        { role: 'model', parts: [{ text: data.message }] }
-      ]);
 
       // Limpar os campos apos o sucesso
       setMessage('');

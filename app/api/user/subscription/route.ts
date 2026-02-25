@@ -25,8 +25,6 @@ export async function GET(req: Request) {
         const userData = userDoc.data();
 
         // Encontrar o plano ativo ou assinatura
-        // Removido o .orderBy() e .limit(1) para evitar a exigência de um Composite Index no Firestore,
-        // já que um usuário terá tipicamente no máximo 1 pedido ativo ao mesmo tempo.
         const ordersRef = await db.collection('orders')
             .where('userId', '==', userId)
             .where('status', '==', 'ativo')
@@ -34,33 +32,36 @@ export async function GET(req: Request) {
 
         let currentPlanName = userData?.plan_id && userData.plan_id !== 'none'
             ? userData.plan_id
-            : 'Gratuito';
+            : 'Nenhum';
 
-        // Todos os planos são mensais (30 dias). Calcular base a partir de hoje se as Orders não especificarem.
-        const baseDate = new Date();
-        baseDate.setDate(baseDate.getDate() + 30);
-        const day = String(baseDate.getDate()).padStart(2, '0');
-        const month = String(baseDate.getMonth() + 1).padStart(2, '0');
-        const year = baseDate.getFullYear();
-
-        let renewalDate = `${day}/${month}/${year}`;
-        let paymentMethod = 'Atribuído Manualmente (Admin)';
+        let subscriptionDetails: any = {
+            orderId: null,
+            status: userData?.plan_id && userData.plan_id !== 'none' ? 'ativo' : 'inativo',
+            price: 0,
+            renewalDate: 'Vitalício / Indeterminado',
+            paymentMethod: 'Atribuído Manualmente (Admin)'
+        };
 
         if (!ordersRef.empty) {
-            const activeOrders = ordersRef.docs.map(doc => doc.data());
+            const activeOrders = ordersRef.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             // Ordenar em memória (descending) pelo createdAt
-            activeOrders.sort((a, b) => {
+            activeOrders.sort((a: any, b: any) => {
                 const dateA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
                 const dateB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
                 return dateB - dateA;
             });
 
-            currentPlanName = activeOrders[0].planName || currentPlanName;
-            paymentMethod = 'Cartão de Crédito (Gateway)'; // Simulated checkout gateway
+            const currentOrder = activeOrders[0] as any;
+            currentPlanName = currentOrder.planName || currentPlanName;
 
-            if (activeOrders[0].createdAt && activeOrders[0].createdAt.toMillis) {
-                const createdDate = new Date(activeOrders[0].createdAt.toMillis());
+            subscriptionDetails.orderId = currentOrder.id;
+            subscriptionDetails.status = currentOrder.status;
+            subscriptionDetails.price = currentOrder.price || 0;
+            subscriptionDetails.paymentMethod = 'Cartão de Crédito (Simulado)';
+
+            if (currentOrder.createdAt && currentOrder.createdAt.toMillis) {
+                const createdDate = new Date(currentOrder.createdAt.toMillis());
                 createdDate.setDate(createdDate.getDate() + 30); // Adds 30 days
 
                 // Formata DD/MM/YYYY
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
                 const oMonth = String(createdDate.getMonth() + 1).padStart(2, '0');
                 const oYear = createdDate.getFullYear();
 
-                renewalDate = `${oDay}/${oMonth}/${oYear}`;
+                subscriptionDetails.renewalDate = `${oDay}/${oMonth}/${oYear}`;
             }
         }
 
@@ -76,8 +77,7 @@ export async function GET(req: Request) {
             token_balance: userData?.token_balance || 0,
             total_spent_tokens: userData?.total_spent_tokens || 0,
             current_plan: currentPlanName,
-            renewalDate: renewalDate,
-            paymentMethod: paymentMethod
+            subscriptionDetails
         }, { status: 200 });
 
     } catch (error: any) {

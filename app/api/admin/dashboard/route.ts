@@ -5,9 +5,18 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // Query users count from the server efficiently using aggregate count API
-        const usersCountSnapshot = await db.collection('users').count().get();
-        const totalUsers = usersCountSnapshot.data().count;
+        // Busca de usuários para mapeamento do ID para o Nome de Exibição (ou Email)
+        const usersDocs = await db.collection('users').get();
+        const usersMap: Record<string, string> = {};
+
+        usersDocs.forEach(uDoc => {
+            const uData = uDoc.data();
+            // Dá preferência ao displayName, depois email, depois fallback
+            usersMap[uDoc.id] = uData.displayName || uData.name || uData.email || 'Usuário Sem Nome';
+        });
+
+        // Contagem de usuários total
+        const totalUsers = usersDocs.size;
 
         const usageLogsSnapshot = await db.collection('usage_logs').get();
 
@@ -48,10 +57,12 @@ export async function GET() {
 
             // Agrupamento por usuário
             const userId = data.userId || 'Desconhecido';
-            if (!userTokens[userId]) {
-                userTokens[userId] = 0;
+            const readableName = usersMap[userId] || userId; // Se por acaso for deletado, manterá o ID como fallback
+
+            if (!userTokens[readableName]) {
+                userTokens[readableName] = 0;
             }
-            userTokens[userId] += tokensUsed;
+            userTokens[readableName] += tokensUsed;
         });
 
         // Calcula custo estimado (formata com 4 casas decimais)

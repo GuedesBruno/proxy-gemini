@@ -10,8 +10,13 @@ interface UserSubscription {
     token_balance: number;
     total_spent_tokens: number;
     current_plan: string;
-    renewalDate?: string;
-    paymentMethod?: string;
+    subscriptionDetails?: {
+        orderId: string | null;
+        status: string;
+        price: number;
+        renewalDate: string;
+        paymentMethod: string;
+    };
 }
 
 interface Plan {
@@ -150,7 +155,6 @@ export default function ClientDashboard() {
                         <div className="flex items-center justify-center">
                             <Image src="/icon-teca.png" alt="Teca Logo" width={32} height={32} className="object-contain" />
                         </div>
-                        <span className="font-bold text-xl text-slate-800 tracking-tight ml-2">Liber API</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3">
@@ -220,14 +224,14 @@ export default function ClientDashboard() {
                                 <p className="text-sm font-medium text-slate-500 mb-1">Próxima Renovação</p>
                                 <div className="flex items-center gap-2 text-slate-800">
                                     <Calendar className="w-5 h-5 text-slate-400" />
-                                    <span className="font-semibold">{subscription.renewalDate || "Vitalício / Indeterminado"}</span>
+                                    <span className="font-semibold">{subscription.subscriptionDetails?.renewalDate || "Vitalício / Indeterminado"}</span>
                                 </div>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-slate-500 mb-1">Método de Pagamento</p>
                                 <div className="flex items-center gap-2 text-slate-800">
                                     <CreditCard className="w-5 h-5 text-slate-400" />
-                                    <span className="font-semibold">{subscription.paymentMethod || "Atribuído Manualmente (Admin)"}</span>
+                                    <span className="font-semibold">{subscription.subscriptionDetails?.paymentMethod || "Atribuído Manualmente (Admin)"}</span>
                                 </div>
                             </div>
                         </div>
