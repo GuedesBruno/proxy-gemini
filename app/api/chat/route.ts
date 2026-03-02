@@ -169,19 +169,21 @@ export async function POST(req: Request) {
         }
 
         // Adiciona a nova mensagem do usuário ao histórico local
-        const userMsgPart: any = { text: message };
+        const userParts: any[] = [{ text: message }];
 
         // Se existir uma imagem enviada pelo usuário na nova requisição
         if (image && image.base64 && image.mimeType) {
-            userMsgPart.inlineData = {
-                data: image.base64,
-                mimeType: image.mimeType
-            };
+            userParts.push({
+                inlineData: {
+                    data: image.base64,
+                    mimeType: image.mimeType
+                }
+            });
         }
 
         history.push({
             role: 'user',
-            parts: [userMsgPart]
+            parts: userParts
         });
 
         // Prepara os parâmetros para enviar todo o histórico montado pro Gemini
