@@ -35,9 +35,10 @@ const googleProvider = new GoogleAuthProvider();
 /**
  * Função Auxiliar: Define os cookies de sessão
  */
-const setSessionCookies = (userId: string, email: string) => {
+const setSessionCookies = (userId: string, email: string, role: string = 'user') => {
     document.cookie = `session_userId=${userId}; path=/; max-age=86400`;
     document.cookie = `session_email=${email}; path=/; max-age=86400`;
+    document.cookie = `session_role=${role}; path=/; max-age=86400`;
 };
 
 /**
@@ -70,9 +71,10 @@ export const signInWithGoogle = async () => {
         }
 
         const firestoreUserId = data.firestoreUserId;
-        setSessionCookies(firestoreUserId, user.email);
+        const role = data.userData?.role || 'user';
+        setSessionCookies(firestoreUserId, user.email, role);
 
-        return { user, firestoreUserId };
+        return { user, firestoreUserId, role };
     } catch (error: any) {
         console.error("Erro no login com Google:", error.message);
         throw error;
@@ -80,7 +82,7 @@ export const signInWithGoogle = async () => {
 };
 
 /**
- * LOGIN COM E-MAIL E SENHA (S/N DO LIBER)
+ * LOGIN COM E-MAIL E SENHA (S/N DO TECASSISTIVA)
  */
 export const loginWithEmail = async (email: string, serialNumber: string) => {
     try {
@@ -110,13 +112,14 @@ export const loginWithEmail = async (email: string, serialNumber: string) => {
 
         if (!res.ok || !data.authorized) {
             await signOut(auth);
-            throw new Error(data.error || 'Usuário não encontrado na base de dados do LIBER®.');
+            throw new Error(data.error || 'Usuário não encontrado na base de dados do Portal IA - Tecassistiva.');
         }
 
         const firestoreUserId = data.firestoreUserId;
-        setSessionCookies(firestoreUserId, user.email);
+        const role = data.userData?.role || 'user';
+        setSessionCookies(firestoreUserId, user.email, role);
 
-        return { user, firestoreUserId };
+        return { user, firestoreUserId, role };
     } catch (error: any) {
         console.error("Erro no login com E-mail:", error.message);
         throw error;

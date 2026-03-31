@@ -154,7 +154,7 @@ export default function Home() {
 
         {/* Header */}
         <div className="bg-blue-600 px-6 py-8 sm:px-10 text-center">
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Proxy Liber</h1>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Painel IA - Tecassistiva</h1>
           <p className="mt-2 text-blue-100 text-sm font-medium">
             Ambiente de testes integrados para a API Gemini
           </p>

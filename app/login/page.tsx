@@ -80,14 +80,13 @@ export default function LoginPage() {
             {/* Decorações sutis de background para compor a marca */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-[#002554] to-blue-800"></div>
 
-            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 flex flex-col items-center">
-                <img src="/icon-teca.png" alt="Tecassistiva Logo" className="w-16 h-16 object-contain mb-4 drop-shadow-sm" onError={(e) => {
-                    // Fallback se faltar a imagem no /public
+            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 flex flex-col items-center text-center">
+                <img src="/icon-teca.png" alt="Tecassistiva Logo" className="w-20 h-20 object-contain mb-3 drop-shadow-md" onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                 }} />
-                <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                    LIBER<sup className="text-xs text-[#002554] font-bold">®</sup> 2026.AI
-                </h2>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">IA Tecassistiva</h1>
+                <p className="text-lg font-semibold text-[#002554] -mt-1">Painel Adm</p>
+                <p className="text-sm text-slate-500 mt-2">Portal IA - Tecassistiva</p>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
@@ -208,7 +207,7 @@ export default function LoginPage() {
             </div>
 
             <div className="fixed bottom-4 text-center w-full z-0 pointer-events-none">
-                <span className="text-xs text-slate-400 font-medium">© 2026 Grupo Liber</span>
+                <span className="text-xs text-slate-400 font-medium">© 2026 Tecassistiva</span>
             </div>
         </div>
     );

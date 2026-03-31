@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import { requireAdminAccess } from '@/lib/adminGuard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const settingsRef = db.collection('settings').doc('ai_modules');
         const doc = await settingsRef.get();
@@ -31,6 +35,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const settingsRef = db.collection('settings').doc('ai_modules');

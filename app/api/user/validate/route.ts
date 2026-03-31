@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         if (usersSnapshot.empty) {
             return NextResponse.json({
                 authorized: false,
-                error: 'Usuário não encontrado na base de dados do LIBER®.'
+                error: 'Usuário não encontrado na base de dados do Portal IA - Tecassistiva.'
             }, { status: 404 });
         }
 

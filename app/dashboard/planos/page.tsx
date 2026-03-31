@@ -112,7 +112,7 @@ export default function PlansSelection() {
                     Assinatura de <span className="text-[#002554]">Pacotes e Tokens</span>
                 </h1>
                 <p className="text-lg text-slate-500 font-medium mb-6">
-                    Selecione o pacote de tokens ideal para recarregar sua conta de uso no LIBER® 2026.AI.
+                    Selecione o pacote de tokens ideal para recarregar sua conta de uso no Painel IA - Tecassistiva.
                 </p>
 
                 {/* Toggle Mensal / Anual */}

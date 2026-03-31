@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import { requireAdminAccess } from '@/lib/adminGuard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const snapshot = await db.collection('devices').get();
         const devices = snapshot.docs.map(doc => ({
@@ -19,6 +23,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { serial_number, linked_user_id, model_name, mac_address } = body;
@@ -36,7 +43,7 @@ export async function POST(req: Request) {
 
         await deviceRef.set({
             linked_user_id,
-            model_name: model_name || 'Liber Hardware',
+            model_name: model_name || 'Tecassistiva Hardware',
             mac_address: mac_address || '',
             status: 'active',
             createdAt: new Date().toISOString()
@@ -50,6 +57,9 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { serial_number, status, linked_user_id, model_name, mac_address } = body;
@@ -75,6 +85,9 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const { searchParams } = new URL(req.url);
         const serial_number = searchParams.get('id');

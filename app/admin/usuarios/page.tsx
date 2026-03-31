@@ -270,7 +270,7 @@ export default function UsersManagement() {
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Usuário</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Contato</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Plano</th>
-                                    <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">N/S Liber</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">N/S Tecassistiva</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Disponível</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider">Gastos</th>
                                     <th className="py-4 px-6 text-sm font-bold text-slate-700 uppercase tracking-wider text-right">Ações Principais</th>
@@ -388,8 +388,8 @@ export default function UsersManagement() {
                                 </div>
 
                                 <div className="flex flex-col gap-1">
-                                    <label className="text-sm font-medium text-slate-700">N/S Liber (Opcional)</label>
-                                    <input type="text" value={formSerial} onChange={e => setFormSerial(e.target.value)} placeholder="LIBER-000A" disabled={processing} className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-[#002554] font-mono" />
+                                    <label className="text-sm font-medium text-slate-700">N/S Tecassistiva (Opcional)</label>
+                                    <input type="text" value={formSerial} onChange={e => setFormSerial(e.target.value)} placeholder="TECASSISTIVA-000A" disabled={processing} className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-[#002554] font-mono" />
                                 </div>
                             </div>
 

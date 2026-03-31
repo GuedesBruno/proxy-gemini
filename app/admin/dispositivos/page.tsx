@@ -6,12 +6,13 @@ import { Smartphone, Plus, RefreshCw, Trash2, Edit, AlertCircle, CheckCircle2, L
 export default function AdminDevicesPage() {
     const [devices, setDevices] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     // Modal & Form State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ serial_number: '', linked_user_id: '', model_name: '', mac_address: '', status: 'active' });
+    const [formData, setFormData] = useState({ serial_number: '', linked_user_id: '', model_name: '', status: 'active' });
     const [isEditing, setIsEditing] = useState(false);
 
     // Messages
@@ -22,15 +23,20 @@ export default function AdminDevicesPage() {
     const fetchData = async () => {
         setRefreshing(true);
         try {
-            const [resDevices, resUsers] = await Promise.all([
+            const [resDevices, resUsers, resProducts] = await Promise.all([
                 fetch('/api/admin/devices'),
-                fetch('/api/admin/users')
+                fetch('/api/admin/users'),
+                fetch('/api/admin/products')
             ]);
 
             if (resDevices.ok) setDevices(await resDevices.json());
             if (resUsers.ok) {
                 const data = await resUsers.json();
                 setUsers(data.users || []);
+            }
+            if (resProducts.ok) {
+                const data = await resProducts.json();
+                setProducts(Array.isArray(data) ? data : []);
             }
         } catch (error) {
             console.error('Falha ao carregar dados:', error);
@@ -45,7 +51,7 @@ export default function AdminDevicesPage() {
     }, []);
 
     const openCreateModal = () => {
-        setFormData({ serial_number: '', linked_user_id: '', model_name: 'Óculos Liber V1', mac_address: '', status: 'active' });
+        setFormData({ serial_number: '', linked_user_id: '', model_name: '', status: 'active' });
         setIsEditing(false);
         setErrorMsg(null);
         setIsModalOpen(true);
@@ -56,7 +62,6 @@ export default function AdminDevicesPage() {
             serial_number: device.id,
             linked_user_id: device.linked_user_id,
             model_name: device.model_name || '',
-            mac_address: device.mac_address || '',
             status: device.status || 'active'
         });
         setIsEditing(true);
@@ -170,7 +175,7 @@ export default function AdminDevicesPage() {
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-xs font-bold tracking-wide">
                         <tr>
                             <th className="px-6 py-4">S / N</th>
-                            <th className="px-6 py-4">Hardware</th>
+                            <th className="px-6 py-4">Produto</th>
                             <th className="px-6 py-4">Status / Rede</th>
                             <th className="px-6 py-4">Proprietário (Usuário)</th>
                             <th className="px-6 py-4 text-right">Ações</th>
@@ -195,11 +200,6 @@ export default function AdminDevicesPage() {
                                             <span className="text-slate-600 font-medium bg-slate-100 flex flex-col gap-1 w-fit px-2 py-1 rounded">
                                                 <span>{device.model_name || 'Desconhecido'}</span>
                                             </span>
-                                            {device.mac_address && (
-                                                <div className="mt-1 flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 font-mono px-2 py-0.5 rounded border border-slate-200 w-fit" title="MAC Vinculado Exclusivamente a este S/N">
-                                                    <Lock className="w-3 h-3 text-slate-400" /> {device.mac_address}
-                                                </div>
-                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             {device.status === 'active' ? (
@@ -314,26 +314,25 @@ export default function AdminDevicesPage() {
                             </div>
 
                             <div>
-                                <label className="text-sm font-bold text-slate-700 block mb-1">Modelo / Família do Device</label>
-                                <input
-                                    type="text"
+                                <label className="text-sm font-bold text-slate-700 block mb-1">Produto / Modelo</label>
+                                <select
                                     value={formData.model_name}
                                     onChange={e => setFormData({ ...formData, model_name: e.target.value })}
-                                    placeholder="Ex: Óculos Liber PRO"
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-bold text-slate-700 block mb-1">Endereço MAC (Opcional Inicialmente)</label>
-                                <input
-                                    type="text"
-                                    value={formData.mac_address}
-                                    onChange={e => setFormData({ ...formData, mac_address: e.target.value })}
-                                    placeholder="Ex: 00:1B:44:11:3A:B7"
-                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none font-mono uppercase"
-                                />
-                                <p className="text-xs text-slate-500 mt-1">Se deixado em branco, o primeiro MAC que chamar a API será travado a este serial.</p>
+                                    required
+                                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none bg-white"
+                                >
+                                    <option value="" disabled>--- Selecione um produto cadastrado ---</option>
+                                    {products.length > 0 ? (
+                                        products.map(product => (
+                                            <option key={product.id} value={product.name || product.id}>
+                                                {product.name || product.id}
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <option value="">Nenhum produto disponível</option>
+                                    )}
+                                </select>
+                                <p className="text-xs text-slate-500 mt-1">Caso o produto não esteja na lista, cadastre em Admin &gt; Produtos.</p>
                             </div>
 
                             <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">

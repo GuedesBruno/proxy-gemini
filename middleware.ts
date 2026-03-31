@@ -18,9 +18,9 @@ export function middleware(request: NextRequest) {
 
         // Regra 2: É logado, mas tentou acessar /admin sendo usuário comum
         if (pathname.startsWith('/admin')) {
-            // Verifica o admin hardcoded (Master) -> Opcionalmente você poderia injetar 
-            // no cookie de sessão um { isAdmin: true } vindo do Firestore via loginWithEmail.
-            if (sessionEmail !== 'bi@tecassistiva.com.br') {
+            const sessionRole = request.cookies.get('session_role')?.value || 'user';
+
+            if (sessionRole !== 'admin' && sessionRole !== 'superadmin') {
                 const dashboardUrl = new URL('/dashboard', request.url);
                 return NextResponse.redirect(dashboardUrl);
             }

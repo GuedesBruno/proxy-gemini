@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import admin from 'firebase-admin';
 import { sendWelcomeEmail } from '@/lib/mail';
+import { requireAdminAccess } from '@/lib/adminGuard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const usersSnapshot = await db.collection('users').get();
         const users = usersSnapshot.docs.map(doc => ({
@@ -24,6 +28,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { userId, amountToAdd, name, email, phone, serialNumber, plan_id } = body;
@@ -86,13 +93,9 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { name, email, phone, serialNumber, initialTokens, plan_id, adminEmail } = body;
 
-        // Verifica a permissão Master de criação
-        if (adminEmail !== 'bi@tecassistiva.com.br') {
-            return NextResponse.json(
-                { error: 'Acesso negado. Apenas o e-mail bi@tecassistiva.com.br tem privilégios de criação e disparo do setup na Teca.' },
-                { status: 403 }
-            );
-        }
+        // validação de permissão agora via role admin/superadmin no cookie.
+        const guard = requireAdminAccess();
+        if (guard) return guard;
 
         if (!email || typeof initialTokens !== 'number') {
             return NextResponse.json(
@@ -161,6 +164,9 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+    const guard = requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { userId } = body;

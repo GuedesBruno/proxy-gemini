@@ -33,7 +33,7 @@ export async function POST(req: Request) {
             );
         }
 
-        // Busque o documento correspondente ao appId na collection applications para pegar o pre_prompt
+        // Busque o documento correspondente ao appId na collection applications para pegar o system_prompt
         const appRef = db.collection('applications').doc(appId);
         const appDoc = await appRef.get();
 
@@ -50,20 +50,9 @@ export async function POST(req: Request) {
         const appTemp = appData.temperature !== undefined ? appData.temperature : 0.7;
         const appSystemPrompt = appData.system_prompt || '';
 
-        // Campos legados de Identidade e Regras Adicionais
-        const prePrompt: string = appData.pre_prompt || '';
-        const appDescription: string = appData.description || '';
-
         // Montagem do Pipeline de Contexto:
-        // 1. Identidade (System Prompt) -> 2. Descrição (Contexto) -> 3. Regras Especiais (Pre Prompt)
+        // System Prompt = Identidade & Regras do Agente
         let finalSystemInstruction = appSystemPrompt ? `${appSystemPrompt}` : '';
-
-        if (appDescription) {
-            finalSystemInstruction += finalSystemInstruction ? `\n\n[Contexto da Aplicação]:\n${appDescription}` : `[Contexto da Aplicação]:\n${appDescription}`;
-        }
-        if (prePrompt) {
-            finalSystemInstruction += finalSystemInstruction ? `\n\n[Regras Específicas do App/Bot]:\n${prePrompt}` : `[Regras Específicas do App/Bot]:\n${prePrompt}`;
-        }
 
         finalSystemInstruction = finalSystemInstruction.trim();
 
@@ -100,7 +89,7 @@ export async function POST(req: Request) {
                     }
                     // --- Fim: Dupla Validação ---
 
-                    // É um Hardware Liber! Vamos puxar a carteira do verdadeiro dono (Usuário Conta-Mãe)
+                    // É um Hardware Tecassistiva! Vamos puxar a carteira do verdadeiro dono (Usuário Conta-Mãe)
                     targetUserId = deviceData.linked_user_id;
                     userRef = db.collection('users').doc(targetUserId);
                     userDoc = await userRef.get();
@@ -120,6 +109,38 @@ export async function POST(req: Request) {
         const userData = userDoc.data();
         const currentTokenBalance: number = userData?.token_balance || 0;
         const currentPlan: string = userData?.plan_id || 'none';
+        const userProductId: string = userData?.product_id || null;
+
+        // Validação de Produto e Permissões
+        if (userProductId) {
+            const productRef = db.collection('products').doc(userProductId);
+            const productDoc = await productRef.get();
+
+            if (!productDoc.exists) {
+                return NextResponse.json({ error: 'Produto associado ao usuário não encontrado.' }, { status: 404 });
+            }
+
+            const productData = productDoc.data();
+            const productPermissions: string[] = productData?.permissions || [];
+
+            // Verificar se a aplicação está associada ao produto do usuário
+            const appProductId = appData.product_id;
+            if (appProductId && appProductId !== userProductId) {
+                return NextResponse.json({ error: 'Aplicação não autorizada para este produto.' }, { status: 403 });
+            }
+
+            // Verificar permissões específicas
+            const requiresChat = true; // Chat sempre requer 'chat'
+            const requiresImage = !!image; // Se há imagem, requer 'image_recognition'
+
+            if (requiresChat && !productPermissions.includes('chat')) {
+                return NextResponse.json({ error: 'Produto não autorizado para chat IA.' }, { status: 403 });
+            }
+
+            if (requiresImage && !productPermissions.includes('image_recognition')) {
+                return NextResponse.json({ error: 'Produto não autorizado para reconhecimento de imagens.' }, { status: 403 });
+            }
+        }
 
         if (currentTokenBalance <= 0) {
             return NextResponse.json(
@@ -197,7 +218,15 @@ export async function POST(req: Request) {
         const responseText: string = response.text();
         const tokenCount: number = response.usageMetadata?.totalTokenCount || 0;
 
-        // Atualize o documento do usuário no Firestore: 
+        // Evitar underflow de token (não permitir saldo negativo)
+        if (tokenCount > currentTokenBalance) {
+            return NextResponse.json(
+                { error: 'Saldo insuficiente para cobrir os tokens desta requisição.' },
+                { status: 403 }
+            );
+        }
+
+        // Atualize o documento do usuário no Firestore:
         // Subtraia o valor de tokens gastos e adicione ao total_spent_tokens
         await userRef.update({
             token_balance: admin.firestore.FieldValue.increment(-tokenCount),

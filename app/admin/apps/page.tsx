@@ -5,11 +5,13 @@ import { AppWindow, Loader2, Plus, CheckCircle2, AlertCircle, Trash2, Edit2, X }
 
 export default function AdminAppsPage() {
     const [apps, setApps] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     const [newAppId, setNewAppId] = useState('');
     const [newAppDesc, setNewAppDesc] = useState('');
+    const [newAppProductId, setNewAppProductId] = useState('');
 
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -20,6 +22,7 @@ export default function AdminAppsPage() {
 
     useEffect(() => {
         fetchApps();
+        fetchProducts();
     }, []);
 
     const fetchApps = async () => {
@@ -40,10 +43,26 @@ export default function AdminAppsPage() {
         }
     };
 
+    const fetchProducts = async () => {
+        try {
+            const res = await fetch('/api/admin/products');
+            if (res.ok) {
+                const data = await res.json();
+                setProducts(data);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar produtos:', error);
+        }
+    };
+
     const handleCreateApp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newAppId.trim()) {
             setErrorMsg('O App ID é obrigatório.');
+            return;
+        }
+        if (!newAppProductId) {
+            setErrorMsg('Selecione um produto para o aplicativo.');
             return;
         }
 
@@ -57,11 +76,8 @@ export default function AdminAppsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: newAppId.trim(),
-                    // We map description to a pre_prompt field internally if we want,
-                    // but according to plan we simply leave pre_prompt blank. 
-                    // Let's add description to the document schema just for display.
                     description: newAppDesc.trim(),
-                    pre_prompt: ''
+                    product_id: newAppProductId
                 })
             });
 
@@ -73,6 +89,7 @@ export default function AdminAppsPage() {
             setSuccessMsg('Aplicativo criado com sucesso!');
             setNewAppId('');
             setNewAppDesc('');
+            setNewAppProductId('');
             fetchApps(); // Reload list
 
             setTimeout(() => setSuccessMsg(null), 3000);
@@ -124,22 +141,17 @@ export default function AdminAppsPage() {
         setErrorMsg(null);
 
         try {
-            // Reusing the PATCH route which takes { apps: [{id, pre_prompt, description...}] }
-            // Note: Our PATCH currently only updates pre_prompt, we need it to update description too or replace it.
-            // Wait, we can just POST it again because in Firestore, set() with merge:true or update() can be used.
-            // Wait, our backend POST has a check if it exists: `if (appDoc.exists) return 409`.
-            // Our backend PATCH updates `pre_prompt` explicitly inside the batch loop.
             const res = await fetch('/api/admin/applications', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     apps: [{
                         id: editingApp.id,
-                        pre_prompt: editingApp.pre_prompt, // preserve legacy
                         description: editingApp.description,
                         system_prompt: editingApp.system_prompt,
                         llm_model: editingApp.llm_model,
-                        temperature: editingApp.temperature
+                        temperature: editingApp.temperature,
+                        product_id: editingApp.product_id
                     }]
                 })
             });
@@ -221,6 +233,23 @@ export default function AdminAppsPage() {
                                 />
                                 <p className="text-xs text-slate-500 mt-1">Uma breve nota para identificar o uso deste app.</p>
                             </div>
+                            <div>
+                                <label className="text-sm font-bold text-slate-700 block mb-1">Produto Vinculado</label>
+                                <select
+                                    value={newAppProductId}
+                                    onChange={e => setNewAppProductId(e.target.value)}
+                                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none w-full bg-white"
+                                    required
+                                >
+                                    <option value="">Selecione um produto</option>
+                                    {products.map(product => (
+                                        <option key={product.id} value={product.id}>
+                                            {product.name} ({product.id})
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-slate-500 mt-1">O produto ao qual este aplicativo pertence.</p>
+                            </div>
                             <button
                                 type="submit"
                                 disabled={saving}
@@ -230,7 +259,7 @@ export default function AdminAppsPage() {
                                 Criar Aplicativo
                             </button>
                             <div className="p-3 bg-blue-50 text-blue-800 text-xs rounded-lg mt-4 border border-blue-100 italic">
-                                Após a criação, vá em <strong>Módulos IA</strong> para vincular as regras de Prompt deste App.
+                                Após a criação, edite o aplicativo para configurar o prompt do sistema e modelo de IA.
                             </div>
                         </form>
                     </div>
@@ -253,6 +282,11 @@ export default function AdminAppsPage() {
                                             <div className="bg-slate-100 text-[#002554] font-mono text-xs font-bold px-2 py-1 rounded inline-block border border-slate-200">
                                                 {app.id}
                                             </div>
+                                            {app.product_id && (
+                                                <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                                                    {products.find(p => p.id === app.product_id)?.name || app.product_id}
+                                                </div>
+                                            )}
                                         </div>
                                         <p className="text-sm text-slate-600 mt-3 font-medium">
                                             {app.description || 'Sem descrição definida.'}
@@ -315,7 +349,7 @@ export default function AdminAppsPage() {
                                     onClick={() => setEditTab('prompt')}
                                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${editTab === 'prompt' ? 'bg-white text-[#002554] shadow-sm border border-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}
                                 >
-                                    Regras & Identidade
+                                    Prompt do Sistema
                                 </button>
                                 <button
                                     type="button"
@@ -346,8 +380,24 @@ export default function AdminAppsPage() {
                                                 value={editingApp.description || ''}
                                                 onChange={e => setEditingApp({ ...editingApp, description: e.target.value })}
                                                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none w-full"
-                                                placeholder="ex: Agente de Análise Liber"
+                                                placeholder="ex: Agente de Análise Tecassistiva"
                                             />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-bold text-slate-700 block mb-1">Produto Vinculado</label>
+                                            <select
+                                                value={editingApp.product_id || ''}
+                                                onChange={e => setEditingApp({ ...editingApp, product_id: e.target.value })}
+                                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-[#002554]/20 focus:border-[#002554] outline-none w-full bg-white"
+                                            >
+                                                <option value="">Selecione um produto</option>
+                                                {products.map(product => (
+                                                    <option key={product.id} value={product.id}>
+                                                        {product.name} ({product.id})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-slate-500 mt-1">O produto ao qual este aplicativo pertence.</p>
                                         </div>
                                     </div>
                                 )}

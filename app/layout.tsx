@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LIBER® 2026.AI',
+  title: 'Painel IA - Tecassistiva',
   description: 'Inteligência Artificial Assistiva da Tecassistiva',
   icons: {
     icon: '/icon-teca.png',

@@ -6,7 +6,7 @@ export default function TestLoginPage() {
             <button onClick={async () => {
                 try {
                     const { loginWithEmail } = await import('@/lib/auth');
-                    const res = await loginWithEmail('brunoguedes@tecassistiva.com.br', 'LIBER-07');
+                    const res = await loginWithEmail('brunoguedes@tecassistiva.com.br', 'TECASSISTIVA-07');
                     alert('SUCCESS FIREBASE UID: ' + res.user.uid + '  |  FIRESTORE UID: ' + res.firestoreUserId);
                 } catch (e: any) {
                     alert('ERROR: ' + e.message);
