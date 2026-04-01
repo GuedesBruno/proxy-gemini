@@ -91,10 +91,10 @@ export async function PATCH(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { name, email, phone, serialNumber, initialTokens, plan_id, adminEmail } = body;
+        const { name, email, phone, serialNumber, initialTokens, plan_id } = body;
 
         // validação de permissão agora via role admin/superadmin no cookie.
-        const guard = requireAdminAccess();
+        const guard = await requireAdminAccess();
         if (guard) return guard;
 
         if (!email || typeof initialTokens !== 'number') {
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-    const guard = requireAdminAccess();
+    const guard = await requireAdminAccess();
     if (guard) return guard;
 
     try {

@@ -24,11 +24,13 @@ export async function POST(req: Request) {
         // Extraia userId, appId, message, threadId e opcionalmente a imagem do corpo da requisição JSON
         const body: Partial<ChatRequestBody> = await req.json();
         const { userId, appId, message, threadId, macAddress, image } = body;
+        const normalizedMessage = typeof message === 'string' ? message.trim() : '';
+        const hasValidImage = !!(image && image.base64 && image.mimeType);
 
         // Validação mínima
-        if (!userId || !appId || !message || typeof message !== 'string') {
+        if (!userId || !appId || (!normalizedMessage && !hasValidImage)) {
             return NextResponse.json(
-                { error: 'Parâmetros obrigatórios ausentes ou inválidos: userId, appId, ou message.' },
+                { error: 'Parâmetros obrigatórios ausentes ou inválidos: userId, appId e ao menos message ou image.' },
                 { status: 400 }
             );
         }
@@ -190,10 +192,17 @@ export async function POST(req: Request) {
         }
 
         // Adiciona a nova mensagem do usuário ao histórico local
-        const userParts: any[] = [{ text: message }];
+        const userParts: any[] = [];
+
+        if (normalizedMessage) {
+            userParts.push({ text: normalizedMessage });
+        }
 
         // Se existir uma imagem enviada pelo usuário na nova requisição
-        if (image && image.base64 && image.mimeType) {
+        if (hasValidImage && image) {
+            if (!normalizedMessage) {
+                userParts.push({ text: 'Analise a imagem enviada.' });
+            }
             userParts.push({
                 inlineData: {
                     data: image.base64,

@@ -1,17 +1,37 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { dbClient } from '@/lib/auth';
-import { collection, getDocs } from 'firebase/firestore';
 import { Paperclip, Send, Loader2, Trash2 } from 'lucide-react';
 
+interface Product {
+  id: string;
+  name?: string;
+}
+
+interface AppItem {
+  id: string;
+  description?: string;
+  product_id?: string;
+  productId?: string;
+  system_prompt?: string;
+}
+
+interface UserItem {
+  id: string;
+  name?: string;
+  email?: string;
+}
+
 export default function Home() {
+  const [productId, setProductId] = useState('');
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [appId, setAppId] = useState('');
-  const [availableApps, setAvailableApps] = useState<any[]>([]);
+  const [availableApps, setAvailableApps] = useState<AppItem[]>([]);
   const [simulatedUserId, setSimulatedUserId] = useState('');
-  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserItem[]>([]);
   const [message, setMessage] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<{ role: string; parts: { text: string }[] }[]>([]);
@@ -24,9 +44,10 @@ export default function Home() {
   useEffect(() => {
     const fetchSelectData = async () => {
       try {
-        const [resUsers, resApps] = await Promise.all([
+        const [resUsers, resApps, resProducts] = await Promise.all([
           fetch('/api/admin/users'),
-          fetch('/api/admin/applications')
+          fetch('/api/admin/applications'),
+          fetch('/api/admin/products')
         ]);
 
         if (resUsers.ok) {
@@ -38,7 +59,12 @@ export default function Home() {
         if (resApps.ok) {
           const appsList = await resApps.json();
           setAvailableApps(appsList);
-          if (appsList.length > 0) setAppId(appsList[0].id);
+        }
+
+        if (resProducts.ok) {
+          const productsList = await resProducts.json();
+          setAvailableProducts(productsList);
+          if (productsList.length > 0) setProductId(productsList[0].id);
         }
       } catch (err) {
         console.error("Erro ao buscar dados iniciais:", err);
@@ -46,6 +72,25 @@ export default function Home() {
     };
     fetchSelectData();
   }, []);
+
+  const normalizeValue = (value?: string) => (value || '').trim().toLowerCase();
+  const appProductId = (app: AppItem) => app.product_id || app.productId || '';
+
+  const filteredApps = availableApps.filter((a) => {
+    return normalizeValue(appProductId(a)) === normalizeValue(productId);
+  });
+  const selectedApp = filteredApps.find((a) => a.id === appId) || null;
+
+  useEffect(() => {
+    if (filteredApps.length > 0) {
+      if (!filteredApps.some((a) => a.id === appId)) {
+        setAppId(filteredApps[0].id);
+      }
+    } else {
+      setAppId('');
+    }
+    setShowPromptPreview(false);
+  }, [productId, availableApps]);
 
   const clearHistory = () => {
     if (confirm('Tem certeza que deseja limpar o histórico de conversa com este App? Isto forçará o proxy a criar uma nova Thread de sessão limpa.')) {
@@ -72,7 +117,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || loading) return;
+    if ((!message.trim() && !imageFile) || loading || !appId || !simulatedUserId) return;
 
     setLoading(true);
     setError(null);
@@ -90,13 +135,14 @@ export default function Home() {
       }
 
       // 1. Atualiza visualmente o historico imediatamente com a mensagem enviada
-      const newUserMsg = { role: 'user', parts: [{ text: message }] };
+      const previewText = message.trim() ? message : '[Imagem enviada sem texto]';
+      const newUserMsg = { role: 'user', parts: [{ text: previewText }] };
       setChatHistory(prev => [...prev, newUserMsg]);
 
       const reqBody: any = {
         userId: simulatedUserId,
         appId,
-        message: message, // Envia só a mensagem
+        message: message.trim(),
         image: imagePayload
       };
 
@@ -164,10 +210,30 @@ export default function Home() {
         <div className="px-6 py-8 sm:px-10">
           <form onSubmit={handleSubmit} className="space-y-6">
 
+            {/* Input - Product ID */}
+            <div>
+              <label htmlFor="productId" className="block text-sm font-semibold text-gray-700 mb-2">
+                Produto
+              </label>
+              <select
+                id="productId"
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                className="block w-full rounded-lg border-2 border-gray-200 py-3 pl-4 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 bg-gray-50 transition-all duration-200 text-gray-800"
+              >
+                {availableProducts.length === 0 && <option value="">Carregando Produtos...</option>}
+                {availableProducts.map((p) => (
+                  <option key={p.id} value={p.id} className="font-medium text-gray-700">
+                    {p.name || p.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Input - App ID */}
             <div>
               <label htmlFor="appId" className="block text-sm font-semibold text-gray-700 mb-2">
-                Módulo / Contexto (App ID)
+                Aplicativo (filtrado pelo produto)
               </label>
               <select
                 id="appId"
@@ -175,13 +241,30 @@ export default function Home() {
                 onChange={(e) => setAppId(e.target.value)}
                 className="block w-full rounded-lg border-2 border-gray-200 py-3 pl-4 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 bg-gray-50 transition-all duration-200 text-gray-800"
               >
-                {availableApps.length === 0 && <option value="">Carregando Apps...</option>}
-                {availableApps.map((a) => (
+                {filteredApps.length === 0 && <option value="">Nenhum app para este produto</option>}
+                {filteredApps.map((a) => (
                   <option key={a.id} value={a.id} className="font-medium text-gray-700">
                     {a.id} {a.description ? `- ${a.description}` : ''}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowPromptPreview((prev) => !prev)}
+                disabled={!selectedApp}
+                className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {showPromptPreview ? 'Ocultar Pré-Prompt' : 'Ver Pré-Prompt do App'}
+              </button>
+              {showPromptPreview && selectedApp && (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-500 mb-2">SYSTEM PROMPT</p>
+                  <pre className="whitespace-pre-wrap text-sm text-slate-700">{selectedApp.system_prompt || 'Sem pré-prompt configurado para este app.'}</pre>
+                </div>
+              )}
             </div>
 
             {/* Input - User Selector */}
@@ -208,7 +291,7 @@ export default function Home() {
             {/* Input - Message & Image Attach */}
             <div>
               <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2">
-                Sua Mensagem
+                Mensagem (opcional quando enviar imagem)
               </label>
 
               <div className="relative flex items-end rounded-lg border-2 border-gray-200 bg-gray-50 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all duration-200">
@@ -219,8 +302,7 @@ export default function Home() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="block w-full rounded-lg border-none py-3 px-4 text-base focus:ring-0 bg-transparent resize-none text-gray-800 placeholder:text-gray-400"
-                    placeholder="Insira o texto base para a geração de conteúdo..."
-                    required
+                    placeholder="Digite uma mensagem ou envie apenas uma imagem..."
                   />
                   {imageFile && (
                     <div className="px-4 pb-2">
@@ -257,9 +339,9 @@ export default function Home() {
 
                   <button
                     type="submit"
-                    disabled={loading || !message.trim()}
+                      disabled={loading || (!message.trim() && !imageFile) || !appId || !simulatedUserId}
                     className={`p-2 rounded-full transition-all flex items-center justify-center 
-                            ${(loading || !message.trim()) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}
+                        ${(loading || (!message.trim() && !imageFile) || !appId || !simulatedUserId) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}
                         `}
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-0.5" />}
