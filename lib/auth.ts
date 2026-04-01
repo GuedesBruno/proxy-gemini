@@ -32,6 +32,19 @@ export const dbClient = getFirestore(app);
 
 const googleProvider = new GoogleAuthProvider();
 
+const getFirebaseAuthErrorMessage = (error: unknown) => {
+    const authError = error as { code?: string; message?: string };
+
+    if (authError?.code === 'auth/unauthorized-domain') {
+        const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'dominio-atual';
+        const configuredAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'nao-configurado';
+
+        return `Dominio nao autorizado no Firebase Auth. Adicione "${currentHost}" em Firebase Console > Authentication > Settings > Authorized domains. authDomain configurado: ${configuredAuthDomain}.`;
+    }
+
+    return authError?.message || 'Erro desconhecido na autenticacao.';
+};
+
 /**
  * Função Auxiliar: Define os cookies de sessão
  */
@@ -75,9 +88,10 @@ export const signInWithGoogle = async () => {
         setSessionCookies(firestoreUserId, user.email, role);
 
         return { user, firestoreUserId, role };
-    } catch (error: any) {
-        console.error("Erro no login com Google:", error.message);
-        throw error;
+    } catch (error) {
+        const message = getFirebaseAuthErrorMessage(error);
+        console.error('Erro no login com Google:', message);
+        throw new Error(message);
     }
 };
 
@@ -120,9 +134,10 @@ export const loginWithEmail = async (email: string, serialNumber: string) => {
         setSessionCookies(firestoreUserId, user.email, role);
 
         return { user, firestoreUserId, role };
-    } catch (error: any) {
-        console.error("Erro no login com E-mail:", error.message);
-        throw error;
+    } catch (error) {
+        const message = getFirebaseAuthErrorMessage(error);
+        console.error('Erro no login com E-mail:', message);
+        throw new Error(message);
     }
 };
 

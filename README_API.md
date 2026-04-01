@@ -10,7 +10,7 @@ A nossa API Proxy atua como uma barreira segura, gerenciando o saldo de tokens d
 
 Responsável por enviar mensagens para o modelo de Inteligência Artificial e recuperar a resposta.
 
-- **URL:** `POST https://ia.tecassistiva.com.br/api/chat` 
+- **URL:** `POST https://liber.tecassistiva.com.br/api/chat` 
   *(Para testes locais em desenvolvimento, altere para `http://localhost:3000/api/chat`).*
 - **Content-Type:** `application/json`
 
