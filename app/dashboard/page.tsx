@@ -259,7 +259,7 @@ export default function ClientDashboard() {
                 <section className="bg-gradient-to-r from-[#002554] to-blue-900 rounded-3xl p-10 shadow-lg text-white flex flex-col md:flex-row items-center justify-between gap-8">
                     <div className="flex-1">
                         <h2 className="text-3xl font-extrabold tracking-tight mb-3">Obter Mais Tokens da IA</h2>
-                        <p className="text-blue-100 text-lg">Faça o upgrade da sua carteira de requisições de Inteligência Artificial instantaneamente escolhendo os pacotes Bronze, Prata ou Ouro.</p>
+                        <p className="text-blue-100 text-lg">Faça o upgrade da sua carteira de requisições de Inteligência Artificial instantaneamente escolhendo os pacotes Básico, Intermediário ou Avançado.</p>
                     </div>
                     <div className="shrink-0">
                         <button

@@ -301,9 +301,9 @@ export default function UsersManagement() {
                                                     user.plan_id === 'bronze' ? 'bg-orange-100 text-orange-800 border-orange-200' :
                                                         'bg-gray-100 text-gray-500 border-gray-200'
                                                 }`}>
-                                                {user.plan_id === 'ouro' ? 'Ouro' :
-                                                    user.plan_id === 'prata' ? 'Prata' :
-                                                        user.plan_id === 'bronze' ? 'Bronze' : 'Nenhum'}
+                                                {user.plan_id === 'ouro' ? 'Avançado' :
+                                                    user.plan_id === 'prata' ? 'Intermediário' :
+                                                        user.plan_id === 'bronze' ? 'Básico' : 'Nenhum'}
                                             </span>
                                         </td>
 
@@ -412,9 +412,9 @@ export default function UsersManagement() {
                                     className="w-full md:w-1/2 rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-[#002554]"
                                 >
                                     <option value="none">Nenhum plano ativo</option>
-                                    <option value="bronze">Plano Bronze</option>
-                                    <option value="prata">Plano Prata</option>
-                                    <option value="ouro">Plano Ouro</option>
+                                    <option value="bronze">Plano Básico</option>
+                                    <option value="prata">Plano Intermediário</option>
+                                    <option value="ouro">Plano Avançado</option>
                                 </select>
                             </div>
 

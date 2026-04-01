@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import admin from 'firebase-admin';
 
+const PLAN_ID_ALIASES: Record<string, string[]> = {
+    bronze: ['bronze'],
+    prata: ['prata', 'silver'],
+    silver: ['silver', 'prata'],
+    ouro: ['ouro', 'gold'],
+    gold: ['gold', 'ouro']
+};
+
+const getCandidatePlanIds = (planId: string) => {
+    const normalized = String(planId || '').trim().toLowerCase();
+    return PLAN_ID_ALIASES[normalized] || [normalized];
+};
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -21,23 +34,37 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Utilizador não encontrado.' }, { status: 404 });
         }
 
-        const planRef = db.collection('plans').doc(planId);
-        const planDoc = await planRef.get();
+        const candidatePlanIds = getCandidatePlanIds(planId);
+        let resolvedPlanDoc: FirebaseFirestore.DocumentSnapshot | null = null;
 
-        if (!planDoc.exists) {
+        for (const candidateId of candidatePlanIds) {
+            const candidateDoc = await db.collection('plans').doc(candidateId).get();
+            if (candidateDoc.exists) {
+                resolvedPlanDoc = candidateDoc;
+                break;
+            }
+        }
+
+        if (!resolvedPlanDoc) {
             return NextResponse.json({ error: 'Plano não encontrado.' }, { status: 404 });
         }
 
-        const tokensToAdd = planDoc.data()?.tokens;
+        const planData = resolvedPlanDoc.data() || {};
+        const resolvedPlanId = resolvedPlanDoc.id;
+        const tokensToAdd = Number(planData.tokens || 0);
+
+        if (!Number.isFinite(tokensToAdd) || tokensToAdd <= 0) {
+            return NextResponse.json({ error: 'Plano inválido para assinatura. Tokens não definidos.' }, { status: 400 });
+        }
 
         const orderData = {
             userId,
-            planId,
+            planId: resolvedPlanId,
             status: 'ativo', // Simulação direta de Gateway
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            price: planDoc.data()?.price,
+            price: planData.price,
             tokens: tokensToAdd,
-            planName: planDoc.data()?.name
+            planName: planData.name
         };
 
         const batch = db.batch();
@@ -49,7 +76,7 @@ export async function POST(req: Request) {
         // 2. Atualiza os saldos e o plano do Utilizador
         batch.update(userRef, {
             token_balance: admin.firestore.FieldValue.increment(tokensToAdd),
-            plan_id: planId
+            plan_id: resolvedPlanId
         });
 
         await batch.commit();

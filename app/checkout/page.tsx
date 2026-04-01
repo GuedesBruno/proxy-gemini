@@ -12,6 +12,13 @@ export default function CheckoutPage() {
     const [processing, setProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    const getSessionUserIdFromCookie = () => {
+        if (typeof document === 'undefined') return '';
+        const cookies = document.cookie.split(';').map((c) => c.trim());
+        const found = cookies.find((c) => c.startsWith('session_userId='));
+        return found ? decodeURIComponent(found.split('=')[1]) : '';
+    };
+
     useEffect(() => {
         const storedPlan = localStorage.getItem('selectedPlan');
         if (storedPlan) {
@@ -30,11 +37,16 @@ export default function CheckoutPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    planId: plan.id
+                    planId: plan.id,
+                    userId: getSessionUserIdFromCookie()
                 })
             });
 
-            if (!res.ok) throw new Error('Falha no checkout');
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.error || 'Falha no checkout');
+            }
 
             // Limpa o plano armazenado
             localStorage.removeItem('selectedPlan');
@@ -43,7 +55,8 @@ export default function CheckoutPage() {
             setSuccess(true);
         } catch (error) {
             console.error('Erro na compra:', error);
-            alert('Falha interna ao processar o pagamento. Tente novamente.');
+            const msg = error instanceof Error ? error.message : 'Falha interna ao processar o pagamento. Tente novamente.';
+            alert(msg);
         } finally {
             setProcessing(false);
         }

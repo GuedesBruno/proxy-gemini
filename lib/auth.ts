@@ -100,12 +100,22 @@ export const signInWithGoogle = async () => {
  */
 export const loginWithEmail = async (email: string, serialNumber: string) => {
     try {
-        // Firebase Auth exige pelo menos 6 caracteres na senha.
-        // Espelhamos a mesma regra do Backend: preenchemos com zeros à esquerda se for menor.
-        const safeSerialNumber = serialNumber.length < 6 ? serialNumber.padStart(6, '0') : serialNumber;
+        let result;
 
-        // O Firebase Auth usará o e-mail e o Número de Série (senha padronizada)
-        const result = await signInWithEmailAndPassword(auth, email, safeSerialNumber);
+        try {
+            // Novo fluxo: senha livre definida pelo usuário.
+            result = await signInWithEmailAndPassword(auth, email, serialNumber);
+        } catch (firstAttemptError) {
+            // Compatibilidade retroativa: contas antigas que usavam serial com pad.
+            const safeSerialNumber = serialNumber.length < 6 ? serialNumber.padStart(6, '0') : serialNumber;
+
+            if (safeSerialNumber === serialNumber) {
+                throw firstAttemptError;
+            }
+
+            result = await signInWithEmailAndPassword(auth, email, safeSerialNumber);
+        }
+
         const user = result.user;
 
         if (!user.email) {

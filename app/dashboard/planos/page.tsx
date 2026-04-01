@@ -8,44 +8,44 @@ import Image from 'next/image';
 const PLANS = [
     {
         id: 'bronze',
-        name: 'Bronze',
+        name: 'Básico',
         tokens: 10000,
         price: 50.00,
-        description: 'Ideal para testes de API e projetos embrionários.',
+        description: 'Ideal para pilotos e validação inicial do produto.',
         features: [
-            { text: 'Acesso total ao chat (Texto)', highlight: false },
-            { text: 'Geração de 10.000 tokens', highlight: false },
-            { text: 'Suporte via e-mail', highlight: false },
-            { text: 'SLA 99.9% Uptime', highlight: false }
+            { text: 'Chat por texto com contexto (thread)', highlight: false },
+            { text: 'Análise de imagem sob demanda', highlight: false },
+            { text: '10.000 tokens/mês', highlight: true },
+            { text: 'Suporte via e-mail em horário comercial', highlight: false }
         ]
     },
     {
         id: 'prata',
-        name: 'Prata',
+        name: 'Intermediário',
         tokens: 30000,
         price: 120.00,
-        description: 'Para startups validando produtos e MVP.',
+        description: 'Para operação contínua com maior volume de uso.',
         popular: true,
         features: [
-            { text: 'Acesso total ao chat (Texto)', highlight: false },
-            { text: 'Visão computacional (Imagens)', highlight: true },
-            { text: 'Geração de 30.000 tokens', highlight: true },
-            { text: 'Suporte Prioritário', highlight: true },
-            { text: 'SLA 99.9% Uptime', highlight: false }
+            { text: 'Chat por texto com contexto (thread)', highlight: false },
+            { text: 'Análise de imagem com prioridade de fila', highlight: true },
+            { text: '30.000 tokens/mês', highlight: true },
+            { text: 'Suporte prioritário em horário comercial', highlight: true },
+            { text: 'Maior estabilidade para uso diário', highlight: false }
         ]
     },
     {
         id: 'ouro',
-        name: 'Ouro',
+        name: 'Avançado',
         tokens: 100000,
         price: 350.00,
-        description: 'Demanda agressiva em produção com multimodalidade em escala.',
+        description: 'Para ambientes de produção com alta demanda e baixa latência.',
         features: [
-            { text: 'Acesso chat (Texto)', highlight: false },
-            { text: 'Visão computacional (Imagens/Vídeos)', highlight: true },
-            { text: 'Geração de 100.000 tokens', highlight: true },
-            { text: 'Gerente de Conta Dedicado', highlight: true },
-            { text: 'SLA 99.9% Uptime', highlight: false }
+            { text: 'Chat por texto com maior throughput', highlight: true },
+            { text: 'Análise de imagem em escala (sem suporte a vídeo)', highlight: true },
+            { text: '100.000 tokens/mês', highlight: true },
+            { text: 'Acompanhamento técnico dedicado', highlight: true },
+            { text: 'Prioridade máxima de processamento', highlight: false }
         ]
     }
 ];
@@ -54,6 +54,14 @@ export default function PlansSelection() {
     const router = useRouter();
     const [currentPlan, setCurrentPlan] = useState<string | null>(null);
     const [isAnnual, setIsAnnual] = useState(false);
+
+    const normalizePlanId = (value: string) => {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'bronze' || normalized === 'básico' || normalized === 'basico') return 'bronze';
+        if (normalized === 'prata' || normalized === 'silver' || normalized === 'intermediário' || normalized === 'intermediario') return 'prata';
+        if (normalized === 'ouro' || normalized === 'gold' || normalized === 'avançado' || normalized === 'avancado') return 'ouro';
+        return normalized;
+    };
 
     useEffect(() => {
         // Obter o loggedId do cookie
@@ -69,7 +77,7 @@ export default function PlansSelection() {
             fetch(`/api/user/subscription?userId=${id}`, { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.current_plan) setCurrentPlan(data.current_plan.toLowerCase());
+                    if (data.current_plan) setCurrentPlan(normalizePlanId(data.current_plan));
                 })
                 .catch(console.error);
         }

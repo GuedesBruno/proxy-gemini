@@ -3,6 +3,14 @@ import { db } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
+const toDisplayPlanName = (plan: string) => {
+    const normalized = String(plan || '').trim().toLowerCase();
+    if (normalized === 'bronze') return 'Básico';
+    if (normalized === 'prata' || normalized === 'silver') return 'Intermediário';
+    if (normalized === 'ouro' || normalized === 'gold') return 'Avançado';
+    return plan;
+};
+
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -31,7 +39,7 @@ export async function GET(req: Request) {
             .get();
 
         let currentPlanName = userData?.plan_id && userData.plan_id !== 'none'
-            ? userData.plan_id
+            ? toDisplayPlanName(userData.plan_id)
             : 'Nenhum';
 
         let subscriptionDetails: any = {
@@ -53,7 +61,7 @@ export async function GET(req: Request) {
             });
 
             const currentOrder = activeOrders[0] as any;
-            currentPlanName = currentOrder.planName || currentPlanName;
+            currentPlanName = toDisplayPlanName(currentOrder.planName || currentPlanName);
 
             subscriptionDetails.orderId = currentOrder.id;
             subscriptionDetails.status = currentOrder.status;
