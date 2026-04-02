@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import { requireAdminAccess } from '@/lib/adminGuard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         // Busca de usuários para mapeamento do ID para o Nome de Exibição (ou Email)
         const usersDocs = await db.collection('users').get();

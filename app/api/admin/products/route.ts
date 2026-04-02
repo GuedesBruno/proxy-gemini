@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
+import { requireAdminAccess } from '@/lib/adminGuard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const productsRef = db.collection('products');
         const snapshot = await productsRef.get();
@@ -24,6 +28,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { id, name, description, permissions } = body;
@@ -57,6 +64,9 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+    const guard = await requireAdminAccess();
+    if (guard) return guard;
+
     try {
         const body = await req.json();
         const { products } = body; // Expects { products: [{ id: 'prod1', name: '...', permissions: [...] }, ...] }
