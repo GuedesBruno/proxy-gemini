@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import admin from 'firebase-admin';
+import { cookies } from 'next/headers';
 
 // Interface para tipar o corpo da requisição (JSON)
 interface ChatRequestBody {
@@ -21,6 +22,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: Request) {
     try {
+        const cookieStore = await cookies();
+        const sessionRole = cookieStore.get('session_role')?.value || 'user';
+        const isAdminSession = sessionRole === 'admin' || sessionRole === 'superadmin';
+
         // Extraia userId, appId, message, threadId e opcionalmente a imagem do corpo da requisição JSON
         const body: Partial<ChatRequestBody> = await req.json();
         const { userId, appId, message, threadId, macAddress, image } = body;
@@ -112,9 +117,10 @@ export async function POST(req: Request) {
         const currentTokenBalance: number = userData?.token_balance || 0;
         const currentPlan: string = userData?.plan_id || 'none';
         const userProductId: string = userData?.product_id || null;
+        const normalizeId = (value: unknown) => String(value || '').trim().toLowerCase();
 
         // Validação de Produto e Permissões
-        if (userProductId) {
+        if (userProductId && !isAdminSession) {
             const productRef = db.collection('products').doc(userProductId);
             const productDoc = await productRef.get();
 
@@ -127,7 +133,7 @@ export async function POST(req: Request) {
 
             // Verificar se a aplicação está associada ao produto do usuário
             const appProductId = appData.product_id;
-            if (appProductId && appProductId !== userProductId) {
+            if (normalizeId(appProductId) && normalizeId(appProductId) !== normalizeId(userProductId)) {
                 return NextResponse.json({ error: 'Aplicação não autorizada para este produto.' }, { status: 403 });
             }
 

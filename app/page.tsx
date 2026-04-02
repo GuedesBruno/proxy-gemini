@@ -20,9 +20,11 @@ interface UserItem {
   id: string;
   name?: string;
   email?: string;
+  product_id?: string;
 }
 
 export default function Home() {
+  const [isAdminSession, setIsAdminSession] = useState(false);
   const [productId, setProductId] = useState('');
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [appId, setAppId] = useState('');
@@ -42,6 +44,13 @@ export default function Home() {
   } | null>(null);
 
   useEffect(() => {
+    const roleCookie = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('session_role='))
+      ?.split('=')[1];
+
+    setIsAdminSession(roleCookie === 'admin' || roleCookie === 'superadmin');
+
     const fetchSelectData = async () => {
       try {
         const [resUsers, resApps, resProducts] = await Promise.all([
@@ -79,6 +88,10 @@ export default function Home() {
   const filteredApps = availableApps.filter((a) => {
     return normalizeValue(appProductId(a)) === normalizeValue(productId);
   });
+  const productMatchedUsers = availableUsers.filter((u) => {
+    return normalizeValue(u.product_id) === normalizeValue(productId);
+  });
+  const filteredUsers = isAdminSession ? availableUsers : productMatchedUsers;
   const selectedApp = filteredApps.find((a) => a.id === appId) || null;
 
   useEffect(() => {
@@ -91,6 +104,16 @@ export default function Home() {
     }
     setShowPromptPreview(false);
   }, [productId, availableApps]);
+
+  useEffect(() => {
+    if (filteredUsers.length > 0) {
+      if (!filteredUsers.some((u) => u.id === simulatedUserId)) {
+        setSimulatedUserId(filteredUsers[0].id);
+      }
+    } else {
+      setSimulatedUserId('');
+    }
+  }, [productId, availableUsers]);
 
   const clearHistory = () => {
     if (confirm('Tem certeza que deseja limpar o histórico de conversa com este App? Isto forçará o proxy a criar uma nova Thread de sessão limpa.')) {
@@ -268,7 +291,7 @@ export default function Home() {
             </div>
 
             {/* Input - User Selector */}
-            {availableUsers.length > 0 && (
+            {filteredUsers.length > 0 && (
               <div>
                 <label htmlFor="simulatedUser" className="block text-sm font-semibold text-gray-700 mb-2">
                   Simular Escopo de Usuário (Consumo de Tokens na Base):
@@ -279,12 +302,24 @@ export default function Home() {
                   onChange={(e) => setSimulatedUserId(e.target.value)}
                   className="block w-full rounded-lg border-2 border-gray-200 py-3 pl-4 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 bg-gray-50 transition-all duration-200 text-gray-800"
                 >
-                  {availableUsers.map((u) => (
+                  {filteredUsers.map((u) => (
                     <option key={u.id} value={u.id} className="font-medium text-gray-700">
                       {u.name} ({u.email})
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {availableUsers.length > 0 && filteredUsers.length === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Nenhum usuário encontrado para o produto selecionado. Selecione outro produto ou vincule usuários a este produto.
+              </div>
+            )}
+
+            {isAdminSession && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                Sessão admin detectada: o teste pode usar usuários fora do produto selecionado.
               </div>
             )}
 
@@ -306,7 +341,7 @@ export default function Home() {
                   />
                   {imageFile && (
                     <div className="px-4 pb-2">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 truncate max-w-[200px]">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 truncate max-w-50">
                         {imageFile.name}
                       </span>
                       <button type="button" onClick={() => setImageFile(null)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
@@ -356,7 +391,7 @@ export default function Home() {
             {error && (
               <div className="rounded-lg bg-red-50 p-4 border border-red-200 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
                     </svg>
