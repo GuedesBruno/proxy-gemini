@@ -118,11 +118,6 @@ export default function ProductsPage() {
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Gerenciar Produtos</h1>
-                <p className="text-slate-500 mt-1">Cadastre produtos e permissões usados pelas aplicações.</p>
-            </div>
-
             {successMsg && (
                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-xl flex items-center shadow-sm">
                     <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-600" />

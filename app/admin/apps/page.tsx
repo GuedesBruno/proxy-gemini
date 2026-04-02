@@ -179,14 +179,6 @@ export default function AdminAppsPage() {
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <AppWindow className="w-6 h-6 text-[#002554]" />
-                    Aplicações (Apps)
-                </h1>
-                <p className="text-slate-500 mt-1">Gerencie os projetos e agentes que consomem a Inteligência Artificial do Gateway.</p>
-            </div>
-
             {/* Global Alerts */}
             {successMsg && (
                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-xl flex items-center shadow-sm">

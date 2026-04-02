@@ -6,14 +6,6 @@ import { Code, Server, CheckCircle2 } from 'lucide-react';
 export default function ApiDocsPage() {
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <Code className="w-6 h-6 text-[#002554]" />
-                    Documentação da API - Portal IA Tecassistiva
-                </h1>
-                <p className="text-slate-500 mt-1">Guia objetivo para integrar produtos Tecassistiva ao proxy de IA, com um único endpoint para texto e imagem.</p>
-            </div>
-
             <div className="bg-blue-50 border border-blue-200 text-blue-800 p-6 rounded-xl flex gap-4 shadow-sm">
                 <Server className="w-6 h-6 shrink-0 mt-0.5" />
                 <div>
@@ -24,7 +16,7 @@ export default function ApiDocsPage() {
                     <div className="bg-white/60 px-4 py-3 border border-blue-100 rounded-lg flex flex-col justify-center font-mono text-sm max-w-xl shadow-inner gap-2">
                         <div className="flex items-center justify-between">
                             <span className="text-[#002554] font-bold">POST</span>
-                            <span className="text-slate-600 truncate px-2 text-xs md:text-sm">https://liber.tecassistiva.com.br/api/chat</span>
+                            <span className="text-slate-600 truncate px-2 text-xs md:text-sm">https://ia.tecassistiva.com.br/api/chat</span>
                         </div>
                         <div className="text-[11px] text-slate-500 border-t border-blue-100 pt-2 font-sans">
                             <strong>Produção:</strong> Este é o endereço oficial e definitivo da API para consumir o Proxy Gemini via HTTPS.
@@ -41,6 +33,16 @@ export default function ApiDocsPage() {
                     <li>Usuário cadastrado com saldo de tokens.</li>
                     <li>Se for hardware, dispositivo cadastrado em <code>/admin/dispositivos</code> usando o Serial Number e vinculado ao usuário.</li>
                 </ol>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="font-bold text-slate-800 text-lg mb-3">Estrutura do Projeto</h3>
+                <ul className="list-disc list-inside text-sm text-slate-600 space-y-2">
+                    <li><strong>Linguagem:</strong> TypeScript com Next.js (App Router) no frontend e backend.</li>
+                    <li><strong>Hospedagem:</strong> Deploy em ambiente serverless (Vercel) com domínio de produção da Tecassistiva.</li>
+                    <li><strong>Autenticação:</strong> Firebase Authentication (login por e-mail/senha e Google) com sessão baseada em cookies.</li>
+                    <li><strong>Banco de Dados:</strong> Google Firestore (users, products, applications, devices, plans, orders, threads e usage_logs).</li>
+                </ul>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

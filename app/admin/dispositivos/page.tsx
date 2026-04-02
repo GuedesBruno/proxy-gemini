@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Plus, RefreshCw, Trash2, Edit, AlertCircle, CheckCircle2, Loader2, Link as LinkIcon, Lock, Unlock } from 'lucide-react';
+import { Smartphone, Trash2, Edit, AlertCircle, CheckCircle2, Loader2, Link as LinkIcon, Lock, Unlock } from 'lucide-react';
 
 export default function AdminDevicesPage() {
     const [devices, setDevices] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
 
     // Modal & Form State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +20,6 @@ export default function AdminDevicesPage() {
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     const fetchData = async () => {
-        setRefreshing(true);
         try {
             const [resDevices, resUsers, resProducts] = await Promise.all([
                 fetch('/api/admin/devices'),
@@ -42,12 +40,24 @@ export default function AdminDevicesPage() {
             console.error('Falha ao carregar dados:', error);
         } finally {
             setLoading(false);
-            setRefreshing(false);
         }
     };
 
     useEffect(() => {
         fetchData();
+    }, []);
+
+    useEffect(() => {
+        const handleRefresh = () => fetchData();
+        const handleOpenCreate = () => openCreateModal();
+
+        window.addEventListener('admin-devices-refresh', handleRefresh);
+        window.addEventListener('admin-devices-open-create', handleOpenCreate);
+
+        return () => {
+            window.removeEventListener('admin-devices-refresh', handleRefresh);
+            window.removeEventListener('admin-devices-open-create', handleOpenCreate);
+        };
     }, []);
 
     const openCreateModal = () => {
@@ -135,33 +145,6 @@ export default function AdminDevicesPage() {
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <Smartphone className="w-6 h-6 text-[#002554]" />
-                        Equipamentos (Hardwares)
-                    </h1>
-                    <p className="text-slate-500 mt-1 max-w-2xl">Cadastre Números de Série de hardware proprietário e vincule-os aos seus Usuários.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={fetchData}
-                        disabled={refreshing}
-                        className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors bg-white shadow-sm disabled:opacity-50"
-                        title="Atualizar Tabela"
-                    >
-                        <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button
-                        onClick={openCreateModal}
-                        className="flex items-center gap-2 bg-[#002554] text-white px-5 py-2.5 rounded-lg hover:bg-blue-900 font-bold transition-all shadow-md active:scale-95"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Cadastrar Lote / NS
-                    </button>
-                </div>
-            </div>
-
             {successMsg && (
                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-xl flex items-center shadow-sm">
                     <CheckCircle2 className="w-5 h-5 mr-3 shrink-0 text-emerald-600" />

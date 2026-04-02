@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_mock_key');
 const FROM_EMAIL = 'Painel IA - Tecassistiva <no-reply@tecassistiva.com.br>';
-const DASHBOARD_LINK = process.env.NEXT_PUBLIC_APP_URL || 'https://liber.tecassistiva.com.br/login';
+const DASHBOARD_LINK = process.env.NEXT_PUBLIC_APP_URL || 'https://ia.tecassistiva.com.br/login';
 
 export const sendWelcomeEmail = async (email: string, name: string, serialNumber: string) => {
     try {

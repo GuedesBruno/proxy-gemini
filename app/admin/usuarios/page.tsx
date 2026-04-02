@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, DollarSign, Activity, AlertCircle, Pencil, Trash2, Plus, X } from 'lucide-react';
+import { AlertCircle, Pencil, Trash2, X } from 'lucide-react';
 
 interface UserData {
     id: string;
@@ -41,6 +41,15 @@ export default function UsersManagement() {
 
     useEffect(() => {
         fetchUsers();
+    }, []);
+
+    useEffect(() => {
+        const handleOpenCreate = () => openModal();
+        window.addEventListener('admin-users-open-create', handleOpenCreate);
+
+        return () => {
+            window.removeEventListener('admin-users-open-create', handleOpenCreate);
+        };
     }, []);
 
     const fetchUsers = async () => {
@@ -219,26 +228,6 @@ export default function UsersManagement() {
 
     return (
         <div className="w-full flex flex-col space-y-8 p-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
-            {/* Cabeçalho */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex flex-col space-y-2">
-                    <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-                        <Users className="w-8 h-8 text-[#002554]" />
-                        Gestão de Usuários
-                    </h2>
-                    <p className="text-slate-500 text-base">
-                        Visualize, edite ou recarregue créditos das contas registradas.
-                    </p>
-                </div>
-                <button
-                    onClick={() => openModal()}
-                    className="flex items-center gap-2 bg-[#002554] px-5 py-2.5 rounded-md text-white font-medium shadow-sm hover:bg-blue-900 transition-colors w-fit focus:ring-2 focus:ring-offset-2 focus:ring-[#002554]"
-                >
-                    <Plus className="w-5 h-5" />
-                    Novo Usuário
-                </button>
-            </div>
-
             {/* Tratamento de Status Globais */}
             {errorMsg && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl flex items-center shadow-sm">

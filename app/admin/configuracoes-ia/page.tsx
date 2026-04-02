@@ -91,14 +91,6 @@ export default function AdminConfiguracoesIA() {
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <Cpu className="w-6 h-6 text-[#002554]" />
-                    Configurações de IA
-                </h1>
-                <p className="text-slate-500">Gerencie prompt, modelo e temperatura por aplicação.</p>
-            </div>
-
             {errorMsg && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
