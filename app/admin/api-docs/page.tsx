@@ -35,16 +35,6 @@ export default function ApiDocsPage() {
                 </ol>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 className="font-bold text-slate-800 text-lg mb-3">Estrutura do Projeto</h3>
-                <ul className="list-disc list-inside text-sm text-slate-600 space-y-2">
-                    <li><strong>Linguagem:</strong> TypeScript com Next.js (App Router) no frontend e backend.</li>
-                    <li><strong>Hospedagem:</strong> Deploy em ambiente serverless (Vercel) com domínio de produção da Tecassistiva.</li>
-                    <li><strong>Autenticação:</strong> Firebase Authentication (login por e-mail/senha e Google) com sessão baseada em cookies.</li>
-                    <li><strong>Banco de Dados:</strong> Google Firestore (users, products, applications, devices, plans, orders, threads e usage_logs).</li>
-                </ul>
-            </div>
-
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="border-b border-slate-100 bg-slate-50 p-5 flex items-center gap-3">
                     <div className="bg-emerald-100 text-emerald-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0">1</div>
@@ -223,6 +213,16 @@ export default function ApiDocsPage() {
                         <p className="text-sm text-slate-600">Erro interno do proxy ou erro retornado pelo provedor de IA.</p>
                     </div>
                 </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 className="font-bold text-slate-800 text-lg mb-3">Estrutura do Projeto</h3>
+                <ul className="list-disc list-inside text-sm text-slate-600 space-y-2">
+                    <li><strong>Linguagem:</strong> TypeScript com Next.js (App Router) no frontend e backend.</li>
+                    <li><strong>Hospedagem:</strong> Deploy em ambiente serverless (Vercel) com domínio de produção da Tecassistiva.</li>
+                    <li><strong>Autenticação:</strong> Firebase Authentication (login por e-mail/senha e Google) com sessão baseada em cookies.</li>
+                    <li><strong>Banco de Dados:</strong> Google Firestore (users, products, applications, devices, plans, orders, threads e usage_logs).</li>
+                </ul>
             </div>
 
         </div>

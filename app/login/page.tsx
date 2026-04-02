@@ -184,7 +184,7 @@ export default function LoginPage() {
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
 
             {/* Decorações sutis de background para compor a marca */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-[#002554] to-blue-800"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-[#002554] to-blue-800"></div>
 
             <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 flex flex-col items-center text-center">
                 <img src="/icon-teca.png" alt="Tecassistiva Logo" className="w-20 h-20 object-contain mb-3 drop-shadow-md" onError={(e) => {
